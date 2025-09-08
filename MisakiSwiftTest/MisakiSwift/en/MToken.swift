@@ -1,14 +1,15 @@
 import Foundation
+import NaturalLanguage
 
 // Converted from dictionary to explicit structure
-struct Underscore {
-    let is_head: Bool
-    let alias: String?
-    let stress: Double?
-    let currency: String?
-    let num_flags: String
-    let prespace: Bool
-    let rating: Int?
+class Underscore {
+    var is_head: Bool
+    var alias: String?
+    var stress: Double?
+    var currency: String?
+    var num_flags: String
+    var prespace: Bool
+    var rating: Int?
 
     init(is_head: Bool = true,
          alias: String? = nil,
@@ -28,28 +29,32 @@ struct Underscore {
 }
 
 // Single token
-public struct MToken {
-    let text: String
-    let tag: String?
-    var whitespace: String
-    let phonemes: String?
-    let start_ts: Double?
-    let end_ts: Double?
-    let `_`: Underscore
+public class MToken {
+  let text: String
+  let tokenRange: Range<String.Index>
+  let tag: NLTag?
+  var whitespace: String
+  var phonemes: String?
+  let start_ts: Double?
+  let end_ts: Double?
+  var `_`: Underscore
 
-    init(text: String,
-         tag: String? = nil,
-         whitespace: String,
-         phonemes: String? = nil,
-         start_ts: Double? = nil,
-         end_ts: Double? = nil,
-         underscore: Underscore = Underscore()) {
-        self.text = text
-        self.tag = tag
-        self.whitespace = whitespace
-        self.phonemes = phonemes
-        self.start_ts = start_ts
-        self.end_ts = end_ts
-        self.`_` = underscore
-    }        
+  init(
+    text: String,
+    tokenRange: Range<String.Index>,
+    tag: NLTag? = nil,
+    whitespace: String,
+    phonemes: String? = nil,
+    start_ts: Double? = nil,
+    end_ts: Double? = nil,
+    underscore: Underscore = Underscore()) {
+    self.text = text
+    self.tokenRange = tokenRange
+    self.tag = tag
+    self.whitespace = whitespace
+    self.phonemes = phonemes
+    self.start_ts = start_ts
+    self.end_ts = end_ts
+    self.`_` = underscore
+  }
 }

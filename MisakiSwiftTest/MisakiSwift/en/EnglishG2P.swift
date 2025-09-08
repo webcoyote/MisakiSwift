@@ -1,21 +1,38 @@
 import Foundation
 import NaturalLanguage
 
+extension Range where Bound: Comparable {
+    func contains(_ other: Range<Bound>) -> Bool {
+        return self.lowerBound <= other.lowerBound && self.upperBound >= other.upperBound
+    }
+}
+
 // Main G2P pipeline for English text
 final public class EnglishG2P {
-    private let british: Bool
-    private let tagger: NLTagger
-    private let lexicon: Lexicon
-    private let fallback: EnglishFallbackNetwork
-    private let unk: String
-
-    public init(british: Bool = false, unk: String = "❓") {
-        self.british = british
-        self.tagger = NLTagger(tagSchemes: [.lexicalClass])
-        self.lexicon = Lexicon(british: british)
-        self.fallback = EnglishFallbackNetwork(british: british)
-        self.unk = unk
+  private let british: Bool
+  private let tagger: NLTagger
+  private let lexicon: Lexicon
+  private let fallback: EnglishFallbackNetwork
+  private let unk: String
+  
+  struct PreprocessFeature {
+    enum Value {
+      case int(Int)
+      case double(Double)
+      case string(String)
     }
+    
+    let value: Value
+    let tokenRange: Range<String.Index>
+  }
+
+  public init(british: Bool = false, unk: String = "❓") {
+    self.british = british
+    self.tagger = NLTagger(tagSchemes: [.lexicalClass])
+    self.lexicon = Lexicon(british: british)
+    self.fallback = EnglishFallbackNetwork(british: british)
+    self.unk = unk
+  }
 
     /*
     public func tokenize(_ text: String, _ tokens: [String], _ features: [Int: Any]) -> [MToken] {
@@ -190,142 +207,125 @@ final public class EnglishG2P {
     }
     */
     
-    // Text pre-processing tuple for easing the tokenization
-    typealias PreprocessTuple = (text: String, tokens: [String], features: [Int: Any])
+  // Text pre-processing tuple for easing the tokenization
+  typealias PreprocessTuple = (text: String, tokens: [String], features: [PreprocessFeature])
     
-    /// Preprocesses the string in case there are some parts where the pronounciation is pre-dictated using Markdown-like link format, e.g.
-    /// "[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models."
-    private func preprocess(text: String) -> PreprocessTuple {
-        // Matches the pattern of form [link text](url) and captures the two parts
-        let linkRegex = try! NSRegularExpression(pattern: #"\[([^\]]+)\]\(([^\)]*)\)"#, options: [])
+  /// Preprocesses the string in case there are some parts where the pronounciation or stress is pre-dictated using Markdown-like link format, e.g.
+  /// "[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models."
+  private func preprocess(text: String) -> PreprocessTuple {
+    // Matches the pattern of form [link text](url) and captures the two parts
+    let linkRegex = try! NSRegularExpression(pattern: #"\[([^\]]+)\]\(([^\)]*)\)"#, options: [])
 
-        var result = ""
-        var tokens: [String] = []
-        var features: [Int: Any] = [:]
+    var result = ""
+    var tokens: [String] = []
+    var features: [PreprocessFeature] = []
 
-        let input = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        var lastEnd = input.startIndex
-        let ns = input as NSString
-        let fullRange = NSRange(location: 0, length: ns.length)
-        
-        tagger.string = text
-        tagger.setLanguage(.english, range: text.startIndex..<text.endIndex)
-                
-        let options: NLTagger.Options = []
-        tagger.enumerateTags(
-            in: text.startIndex..<text.endIndex,
-            unit: .word,
-            scheme: .lexicalClass,
-            options: options) { tag, tokenRange in
-                if let tag = tag {
-                    let word = String(text[tokenRange])
-                    print("\(word): \(tag.rawValue)")
-                }
-                return true
-            }
-        
-        linkRegex.enumerateMatches(in: input, options: [], range: fullRange) { match, _, _ in
-            guard let m = match else { return }
-            
-            let range = m.range
-            let start = input.index(input.startIndex, offsetBy: range.location)
-            let end = input.index(start, offsetBy: range.length)
-            
-            result += String(input[lastEnd..<start])
-            tokens.append(contentsOf: String(input[lastEnd..<start]).split(separator: " ").map(String.init))
-            
-            let grapheme = ns.substring(with: m.range(at: 1))
-            let phoneme = ns.substring(with: m.range(at: 2))
-            
-            if let intValue = Int(phoneme) {
-                features[tokens.count] = intValue
-            } else if ["0.5", "+0.5"].contains(phoneme) {
-                features[tokens.count] = Double(0.5)
-            } else if phoneme == "-0.5" {
-                features[tokens.count] = Double(-0.5)
-            } else if phoneme.count > 1 && phoneme.first == "/" && phoneme.last == "/" {
-                features[tokens.count] = String(phoneme.dropLast())
-            } else if phoneme.count > 1 && phoneme.first == "#" && phoneme.last == "#" {
-                features[tokens.count] = String(phoneme.dropLast())
-            }
-            
-            result += grapheme
-            tokens.append(grapheme)
-            lastEnd = end
-        }
-        
-        if lastEnd < input.endIndex {
-            result += String(input[lastEnd...])
-            tokens.append(contentsOf: String(input[lastEnd...]).split(separator: " ").map(String.init))
-        }
-        
-        return (text: result, tokens: tokens, features: features)
+    let input = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    var lastEnd = input.startIndex
+    let ns = input as NSString
+    let fullRange = NSRange(location: 0, length: ns.length)
+ 
+    linkRegex.enumerateMatches(in: input, options: [], range: fullRange) { match, _, _ in
+      guard let m = match else { return }
+
+      let range = m.range
+      let start = input.index(input.startIndex, offsetBy: range.location)
+      let end = input.index(start, offsetBy: range.length)
+
+      result += String(input[lastEnd..<start])
+      tokens.append(contentsOf: String(input[lastEnd..<start]).split(separator: " ").map(String.init))
+
+      let grapheme = ns.substring(with: m.range(at: 1))
+      let phoneme = ns.substring(with: m.range(at: 2))
+      
+      let tokenStartIndex = result.endIndex
+      result += grapheme
+      let tokenRange = tokenStartIndex..<result.endIndex
+
+      if let intValue = Int(phoneme) {
+        features.append(PreprocessFeature(value: .int(intValue), tokenRange: tokenRange))
+      } else if ["0.5", "+0.5"].contains(phoneme) {
+        features.append(PreprocessFeature(value: .double(0.5), tokenRange: tokenRange))
+      } else if phoneme == "-0.5" {
+        features.append(PreprocessFeature(value: .double(-0.5), tokenRange: tokenRange))
+      } else if phoneme.count > 1 && phoneme.first == "/" && phoneme.last == "/" {
+        features.append(PreprocessFeature(value: .string(String(phoneme.dropLast())), tokenRange: tokenRange))
+      } else if phoneme.count > 1 && phoneme.first == "#" && phoneme.last == "#" {
+        features.append(PreprocessFeature(value: .string(String(phoneme.dropLast())), tokenRange: tokenRange))
+      }
+
+      tokens.append(grapheme)
+      lastEnd = end
     }
     
-    private func tokenize(preprocessedText: PreprocessTuple) -> [MToken] {
-        var mutableTokens: [MToken] = []
-
-        tagger.string = preprocessedText.text
-        tagger.setLanguage(.english, range: preprocessedText.text.startIndex..<preprocessedText.text.endIndex)
-                
-        let options: NLTagger.Options = []
-        tagger.enumerateTags(
-            in: preprocessedText.text.startIndex..<preprocessedText.text.endIndex,
-            unit: .word,
-            scheme: .lexicalClass,
-            options: options) { tag, tokenRange in
-            if let tag = tag {
-                let word = String(preprocessedText.text[tokenRange])
-                print("\(word): \(tag.rawValue)")
-                if tag == .whitespace, var lastToken = mutableTokens.last {
-                    lastToken.whitespace = word
-                } else {
-                    MToken(text: word, whitespace: "")
-                }
-            }
-                
-            return true
-        }
-                                    
-        if preprocessedText.features.isEmpty { return mutableTokens }
-        
-        /*
-        // Placeholder: simplistic alignment by index
-        for (k, v) in features {
-            guard k < mutableTokens.count else { continue }
-            switch v {
-            case let val as Int:
-                mutableTokens[k].`_`.stress = Double(val)
-            case let val as Double:
-                mutableTokens[k].`_`.stress = val
-            case let val as String:
-                if val.hasPrefix("/") {
-                    mutableTokens[k].`_`.is_head = true
-                    mutableTokens[k].phonemes = String(val.dropFirst())
-                    mutableTokens[k].`_`.rating = 5
-                } else if val.hasPrefix("#") {
-                    mutableTokens[k].`_`.num_flags = String(val.dropFirst())
-                }
-            default:
-                break
-            }
-        }
-        */
-        return mutableTokens
+    if lastEnd < input.endIndex {
+      result += String(input[lastEnd...])
+      tokens.append(contentsOf: String(input[lastEnd...]).split(separator: " ").map(String.init))
     }
-
     
-    // Turns the text into phonemes that can then be fed to text-to-speech (TTS) engine for converting to audio
-    public func phonemize(text: String, performPreprocess: Bool = true) -> (String, [MToken]) {
-        let pre: PreprocessTuple
-        if performPreprocess {
-            pre = self.preprocess(text: text)
+    return (text: result, tokens: tokens, features: features)
+  }
+    
+  private func tokenize(preprocessedText: PreprocessTuple) -> [MToken] {
+    var mutableTokens: [MToken] = []
+    
+    // Tokenize and perform part-of-speech tagging
+    tagger.string = preprocessedText.text
+    tagger.setLanguage(.english, range: preprocessedText.text.startIndex..<preprocessedText.text.endIndex)
+    let options: NLTagger.Options = []
+    tagger.enumerateTags(
+      in: preprocessedText.text.startIndex..<preprocessedText.text.endIndex,
+      unit: .word,
+      scheme: .lexicalClass,
+      options: options) { tag, tokenRange in
+      if let tag = tag {
+        let word = String(preprocessedText.text[tokenRange])
+        if tag == .whitespace, let lastToken = mutableTokens.last {
+          lastToken.whitespace = word
         } else {
-            pre = (text: text, tokens: [], features: [:])
+          mutableTokens.append(MToken(text: word, tokenRange: tokenRange, tag: tag, whitespace: ""))
         }
+      }
         
-        let tokens = tokenize(preprocessedText: pre)
-        print(tokens)
+      return true
+    }
+                            
+    // Simplistic alignment by index to add stress and pre-phonemization features to tokens
+    // TO_DO: Doesn't match the capability of spacy.training.Alignment.from_strings()
+    for feature in preprocessedText.features {
+      for token in mutableTokens {
+        if token.tokenRange.contains(feature.tokenRange) || feature.tokenRange.contains(token.tokenRange) {
+          switch feature.value {
+            case .int(let int):
+              token.`_`.stress = Double(int)
+            case .double(let double):
+              token.`_`.stress = double
+            case .string(let string):
+              if string.hasPrefix("/") {
+                token.`_`.is_head = true
+                token.phonemes = String(string.dropFirst())
+                token.`_`.rating = 5
+              } else if string.hasPrefix("#") {
+                token.`_`.num_flags = String(string.dropFirst())
+              }
+          }
+        }
+      }
+    }
+
+    return mutableTokens
+  }
+
+  // Turns the text into phonemes that can then be fed to text-to-speech (TTS) engine for converting to audio
+  public func phonemize(text: String, performPreprocess: Bool = true) -> (String, [MToken]) {
+    let pre: PreprocessTuple
+    if performPreprocess {
+        pre = self.preprocess(text: text)
+    } else {
+        pre = (text: text, tokens: [], features: [])
+    }
+
+    let tokens = tokenize(preprocessedText: pre)
         
         /*var tokens = tokenize(pre.0, pre.1, pre.2)
         tokens = foldLeft(tokens)
@@ -413,7 +413,6 @@ final public class EnglishG2P {
         }
         let result = finalTokens.map { ( $0.phonemes ?? self.unk ) + $0.whitespace }.joined()
         return (result, finalTokens) */
-        
-        return ("", [])
-    }
+    return ("", [])
+  }
 }
