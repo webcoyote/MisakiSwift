@@ -35,56 +35,6 @@ final public class EnglishG2P {
   }
 
     /*
-    public func tokenize(_ text: String, _ tokens: [String], _ features: [Int: Any]) -> [MToken] {
-        tokenizer.string = text
-        
-        var mutableTokens: [MToken] = []
-        let range = text.startIndex..<text.endIndex
-
-        tokenizer.enumerateTokens(in: range) { tokenRange, _ in
-            tokens.append(String(text[tokenRange]))
-            return true
-        }
-                    
-        if features.isEmpty { return mutableTokens }
-        
-        // Placeholder: simplistic alignment by index
-        for (k, v) in features {
-            guard k < mutableTokens.count else { continue }
-            switch v {
-            case let val as Int:
-                mutableTokens[k].`_`.stress = Double(val)
-            case let val as Double:
-                mutableTokens[k].`_`.stress = val
-            case let val as String:
-                if val.hasPrefix("/") {
-                    mutableTokens[k].`_`.is_head = true
-                    mutableTokens[k].phonemes = String(val.dropFirst())
-                    mutableTokens[k].`_`.rating = 5
-                } else if val.hasPrefix("#") {
-                    mutableTokens[k].`_`.num_flags = String(val.dropFirst())
-                }
-            default:
-                break
-            }
-        }
-        
-        return mutableTokens
-    }
-
-    public func foldLeft(_ tokens: [MToken]) -> [MToken] {
-        var result: [MToken] = []
-        for tk in tokens {
-            if let last = result.last, !tk.`_`.is_head {
-                _ = result.popLast()
-                let merged = mergeTokens([last, tk], unk: self.unk)
-                result.append(merged)
-            } else {
-                result.append(tk)
-            }
-        }
-        return result
-    }
 
     public static func subtokenize(_ word: String) -> [String] {
         return [word]
@@ -315,6 +265,73 @@ final public class EnglishG2P {
 
     return mutableTokens
   }
+  
+  func mergeTokens(_ tokens: [MToken], unk: String?) -> MToken {
+    let stressSet = Set(tokens.compactMap { $0._.stress })
+    let currencySet = Set(tokens.compactMap { $0._.currency })
+    let ratings: [Int?] = tokens.map { $0._.rating }
+        
+    var phonemes: String? = nil
+    if let unk {
+      var phonemeBuilder = ""
+      for token in tokens {
+        if token._.prespace,
+           !phonemeBuilder.isEmpty,
+           !(phonemeBuilder.last?.isWhitespace ?? false),
+           token.phonemes != nil {
+          phonemeBuilder += " "
+        }
+        phonemeBuilder += token.phonemes ?? unk
+      }
+      phonemes = phonemeBuilder
+    }
+    
+    // Concatenate surface text and whitespace
+    let mergedText = tokens.dropLast().map { $0.text + $0.whitespace }.joined() + (tokens.last?.text ?? "")
+
+    // Choose tag from token with highest casing score
+    func score(_ t: MToken) -> Int {
+      return t.text.reduce(0) { $0 + (String($1) == String($1).lowercased() ? 1 : 2) }
+    }
+    let tagSource = tokens.max(by: { score($0) < score($1) })
+    
+    let tokenRangeStart = tokens.first!.tokenRange.lowerBound
+    let tokenRangeEnd = tokens.last!.tokenRange.upperBound
+    let flagChars = Set(tokens.flatMap { Array($0._.num_flags) })
+    
+    return MToken(
+      text: mergedText,
+      tokenRange: Range<String.Index>(uncheckedBounds: (lower: tokenRangeStart, upper: tokenRangeEnd)),
+      tag: tagSource?.tag,
+      whitespace: tokens.last?.whitespace ?? "",
+      phonemes: phonemes,
+      start_ts: tokens.first?.start_ts,
+      end_ts: tokens.last?.end_ts,
+      underscore: Underscore(
+        is_head: tokens.first!._.is_head,
+        alias: nil,
+        stress: (stressSet.count == 1 ? stressSet.first : nil),
+        currency: currencySet.max(),
+        num_flags: String(flagChars.sorted()),
+        prespace: tokens.first!._.prespace,
+        rating: ratings.contains(where: { $0 == nil }) ? nil : ratings.compactMap { $0 }.min()
+      )
+    )
+  }
+    
+  func foldLeft(_ tokens: [MToken]) -> [MToken] {
+    var result: [MToken] = []
+    for token in tokens {
+      if let last = result.last, !token.`_`.is_head {
+        _ = result.popLast()
+        let merged = mergeTokens([last, token], unk: unk)
+        result.append(merged)
+      } else {
+        result.append(token)
+      }
+    }
+    return result
+  }
 
   // Turns the text into phonemes that can then be fed to text-to-speech (TTS) engine for converting to audio
   public func phonemize(text: String, performPreprocess: Bool = true) -> (String, [MToken]) {
@@ -325,10 +342,13 @@ final public class EnglishG2P {
         pre = (text: text, tokens: [], features: [])
     }
 
-    let tokens = tokenize(preprocessedText: pre)
-        
-        /*var tokens = tokenize(pre.0, pre.1, pre.2)
-        tokens = foldLeft(tokens)
+    var tokens = tokenize(preprocessedText: pre)
+    tokens = foldLeft(tokens)
+    
+    print(tokens.forEach { $0.debugPrint() })
+    
+        /*
+       
         var words = G2P.retokenize(tokens)
         var ctx = TokenContext()
         for i in stride(from: words.count - 1, through: 0, by: -1) {
