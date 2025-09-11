@@ -28,6 +28,17 @@ class Underscore {
       self.rating = rating
   }
   
+  convenience init(copying other: Underscore) {
+    self.init(
+      is_head: other.is_head,
+      alias: other.alias,
+      stress: other.stress,
+      currency: other.currency,
+      num_flags: other.num_flags,
+      prespace: other.prespace,
+      rating: other.rating)
+  }
+  
   func debugPrint() {
     print("  is_head: \(is_head)")
     print("  alias: \(alias ?? "nil")")
@@ -67,6 +78,18 @@ public class MToken {
     self.start_ts = start_ts
     self.end_ts = end_ts
     self.`_` = underscore
+  }
+  
+  convenience init(copying other: MToken) {
+    self.init(
+      text: other.text,
+      tokenRange: other.tokenRange,
+      tag: other.tag,
+      whitespace: other.whitespace,
+      phonemes: other.phonemes,
+      start_ts: other.start_ts,
+      end_ts: other.end_ts,
+      underscore: Underscore(copying: other.`_`))
   }
   
   func debugPrint() {

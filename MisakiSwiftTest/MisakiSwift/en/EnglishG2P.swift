@@ -36,72 +36,6 @@ final public class EnglishG2P {
 
     /*
 
-    public static func subtokenize(_ word: String) -> [String] {
-        return [word]
-    }
-
-    public static func retokenize(_ tokens: [MToken]) -> [Any] {
-        var words: [Any] = []
-        var currency: String? = nil
-        for (i, token) in tokens.enumerated() {
-            let needsSplit = (token.`_`.alias == nil && token.phonemes == nil)
-            var tks: [MToken]
-            if needsSplit {
-                let parts = subtokenize(token.text)
-                tks = parts.map { part in
-                    var t = token
-                    t.text = part
-                    t.whitespace = ""
-                    t.`_`.is_head = true
-                    t.`_`.prespace = false
-                    return t
-                }
-            } else { tks = [token] }
-            if var last = tks.last { last.whitespace = token.whitespace; tks[tks.count - 1] = last }
-            for j in 0..<tks.count {
-                var tk = tks[j]
-                if tk.`_`.alias != nil || tk.phonemes != nil {
-                } else if tk.tag == "$", CURRENCIES[tk.text] != nil {
-                    currency = tk.text
-                    tk.phonemes = ""
-                    tk.`_`.rating = 4
-                } else if tk.tag == ":", (tk.text == "-" || tk.text == "–") {
-                    tk.phonemes = "—"
-                    tk.`_`.rating = 3
-                } else if let tag = tk.tag, PUNCT_TAGS.contains(tag), !tk.text.allSatisfy({ isAsciiLetter($0) }) {
-                    tk.phonemes = PUNCT_TAG_PHONEMES[tk.tag ?? ""] ?? String(tk.text.filter { PUNCTS.contains($0) })
-                    tk.`_`.rating = 4
-                } else if currency != nil {
-                    if tk.tag != "CD" { currency = nil }
-                    else if j + 1 == tks.count && (i + 1 == tokens.count || tokens[i + 1].tag != "CD") {
-                        tk.`_`.currency = currency
-                    }
-                } else if j > 0 && j < tks.count - 1 && tk.text == "2" {
-                    let prev = tks[j - 1].text
-                    let next = tks[j + 1].text
-                    if (prev.last.map { String($0) } ?? "" + (next.first.map { String($0) } ?? "")).allSatisfy({ isAsciiLetter($0.first!) }) {
-                        tk.`_`.alias = "to"
-                    }
-                }
-                if tk.`_`.alias != nil || tk.phonemes != nil {
-                    words.append(tk)
-                } else if let last = words.last as? [MToken], last.last?.whitespace.isEmpty == true {
-                    var arr = last
-                    tk.`_`.is_head = false
-                    arr.append(tk)
-                    _ = words.popLast()
-                    words.append(arr)
-                } else {
-                    if tk.whitespace.isEmpty { words.append([tk]) } else { words.append(tk) }
-                }
-            }
-        }
-        return words.map { item in
-            if let arr = item as? [MToken], arr.count == 1 { return arr[0] }
-            return item
-        }
-    }
-
     public static func tokenContext(_ ctx: TokenContext, ps: String?, token: MToken) -> TokenContext {
         var vowel = ctx.future_vowel
         if let ps = ps {
@@ -332,7 +266,138 @@ final public class EnglishG2P {
     }
     return result
   }
+  
+  // Splits words into subtokens such as acronym boundaries, signs, commas, decimals, multiple quotes, camelCase boundaries and so forth.
+  static let SUBTOKENIZE_REGEX_PATTERN = #"^[''']+|\p{Lu}(?=\p{Lu}\p{Ll})|(?:^-)?(?:\d?[,.]?\d)+|[-_]+|[''']{2,}|\p{L}*?(?:[''']\p{L})*?\p{Ll}(?=\p{Lu})|\p{L}+(?:[''']\p{L})*|[^-_\p{L}'''\d]|[''']+$"#
+  
+  static var subtokenizeRegex = try! NSRegularExpression(pattern: EnglishG2P.SUBTOKENIZE_REGEX_PATTERN, options: [])
+    
+  // Character sets for tokenization
+  static let SUBTOKEN_JUNKS: Set<Character> = Set("',-._''/")
+  static let PUNCTS: Set<Character> = Set(";:,.!?—…\"\"\"")
+  static let NON_QUOTE_PUNCTS: Set<Character> = Set(PUNCTS.filter { !"\"\"\"".contains($0) })
 
+  // spaCy-style punctuation tags
+  // https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+  static let PUNCT_TAGS: Set<String> = Set([".", ",", "[", "]", "{", "}", "(", ")", "``", "\"\"", "''", ":", "$", "#", "…", "..."])
+  static let PUNCT_TAG_PHONEMES: [String: String] = [
+      "``": String(UnicodeScalar(8220)!),     // Left double quotation mark
+      "\"\"": String(UnicodeScalar(8221)!),   // Right double quotation mark
+      "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
+  ]
+
+  // Character code ranges for lexicon validation
+  static let LEXICON_ORDS: [Int] = [39, 45] + Array(65...90) + Array(97...122)
+
+  // Phonetic character sets
+  static let CONSONANTS: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
+  // private let EXTENDER: Character = "ː"
+  static let US_TAUS: Set<Character> = Set("AIOWYiuæɑəɛɪɹʊʌ")
+
+  // Currency mappings
+  static let CURRENCIES: [String: (String, String)] = [
+      "$": ("dollar", "cent"),
+      "£": ("pound", "pence"),
+      "€": ("euro", "cent")
+  ]
+  static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
+
+  // Symbol mappings
+  static let ADD_SYMBOLS: [String: String] = [".": "dot", "/": "slash"]
+  static let SYMBOLS: [String: String] = ["%": "percent", "&": "and", "+": "plus", "@": "at"]
+
+  // Phonetic vocabularies for US and GB English
+  static let US_VOCAB: Set<Character> = Set("AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʤʧˈˌθᵊᵻʔ") // ɐ
+  static let GB_VOCAB: Set<Character> = Set("AIQWYabdfhijklmnpstuvwzðŋɑɒɔəɛɜɡɪɹʃʊʌʒʤʧˈˌːθᵊ") // ɐ
+
+  // Stress markers
+  static let STRESSES = "ˌˈ"
+  static let PRIMARY_STRESS: Character = "ˈ"  // STRESSES[1]
+  static let SECONDARY_STRESS: Character = "ˌ" // STRESSES[0]
+  static let VOWELS: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
+  
+  func subtokenize(word: String) -> [String] {
+    let nsString = word as NSString
+    let range = NSRange(location: 0, length: nsString.length)
+    let matches = EnglishG2P.subtokenizeRegex.matches(in: word, options: [], range: range)
+    
+    return matches.map { match in
+      nsString.substring(with: match.range)
+    }
+  }
+  
+  func retokenize(_ tokens: [MToken]) -> [Any] {
+    var words: [Any] = []
+    var currency: String? = nil
+    
+    for (i, token) in tokens.enumerated() {
+      let needsSplit = (token.`_`.alias == nil && token.phonemes == nil)
+      var tokens: [MToken] = []
+      if needsSplit {
+        let parts = subtokenize(word: token.text)
+        tokens = parts.map { part in
+          let t = MToken(copying: token)
+          t.text = part
+          t.whitespace = ""
+          t.`_`.is_head = true
+          t.`_`.prespace = false
+          return t
+        }
+      } else {
+        tokens = [token]
+      }
+          
+      for j in 0..<tokens.count {
+        let token = tokens[j]
+      
+        if token.`_`.alias != nil || token.phonemes != nil {
+          // Do nothing at his point
+        } else if token.tag == .otherWord, EnglishG2P.CURRENCIES[token.text] != nil {
+          currency = token.text
+          token.phonemes = ""
+          token.`_`.rating = 4
+        } else if token.tag == .dash || (token.tag == .punctuation && token.text == "–") {
+          token.phonemes = "—"
+          token.`_`.rating = 3
+        } else if let _ = token.tag, EnglishG2P.PUNCT_TAGS.contains(token.text) {
+          token.phonemes = EnglishG2P.PUNCT_TAG_PHONEMES[token.text] ?? String(token.text.filter { EnglishG2P.PUNCTS.contains($0) })
+          if let phonemes = token.phonemes, phonemes.isEmpty { token.phonemes = nil }
+          token.`_`.rating = token.phonemes != nil ? 4 : 0
+        } else if currency != nil {
+          if token.tag != .number {
+            currency = nil
+          } else if j + 1 == tokens.count && (i + 1 == tokens.count || tokens[i + 1].tag != .number) {
+            token.`_`.currency = currency
+          }
+        } else if j > 0 && j < tokens.count - 1 && token.text == "2" {
+          let prev = tokens[j - 1].text
+          let next = tokens[j + 1].text
+          if (prev.last.map { String($0) } ?? "" + (next.first.map { String($0) } ?? "")).allSatisfy({ $0.isLetter }) ||
+             (prev == "-" && next == "-") {
+            token.`_`.alias = "to"
+          }
+        }
+           
+        if token.`_`.alias != nil || token.phonemes != nil {
+          words.append(token)
+        } else if let last = words.last as? [MToken], last.last?.whitespace.isEmpty == true {
+          var arr = last
+          token.`_`.is_head = false
+          arr.append(token)
+          _ = words.popLast()
+          words.append(arr)
+        } else {
+          if token.whitespace.isEmpty { words.append([token]) } else { words.append(token) }
+        }
+      }
+    }
+                
+    return words.map { item in
+      if let arr = item as? [MToken], arr.count == 1 { return arr[0] }
+      return item
+    }
+  }
+   
   // Turns the text into phonemes that can then be fed to text-to-speech (TTS) engine for converting to audio
   public func phonemize(text: String, performPreprocess: Bool = true) -> (String, [MToken]) {
     let pre: PreprocessTuple
@@ -346,10 +411,9 @@ final public class EnglishG2P {
     tokens = foldLeft(tokens)
     
     print(tokens.forEach { $0.debugPrint() })
+    var words = retokenize(tokens)
     
         /*
-       
-        var words = G2P.retokenize(tokens)
         var ctx = TokenContext()
         for i in stride(from: words.count - 1, through: 0, by: -1) {
             if var w = words[i] as? MToken {
