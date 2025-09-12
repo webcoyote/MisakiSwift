@@ -1,93 +1,288 @@
 import Foundation
+import NaturalLanguage
+
+extension NLTag {
+  var isProperNoun: Bool {
+    return self == .personalName || self == .organizationName || self == .placeName
+  }
+}
 
 // Lexicon
 final class Lexicon {
-    let british: Bool
-    let cap_stresses: (Double, Double) = (0.5, 2.0)
+  let british: Bool
+  let capStresses: (Double, Double) = (0.5, 2.0)
 
-    // gold and silver dictionaries
-    let golds: [String: String]
-    let silvers: [String: String]
+  static let usVocab: Set<Character> = Set("AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʤʧˈˌθᵊᵻʔ")
+  static let gbVocab: Set<Character> = Set("AIQWYabdfhijklmnpstuvwzðŋɑɒɔəɛɜɡɪɹʃʊʌʒʤʧˈˌːθᵊ")
+  static let lexiconOrdinals: [Int] = [39, 45] + Array(65...90) + Array(97...122)
+  static let addSymbols: [String: String] = [".": "dot", "/": "slash"]
+  static let primaryStress: Character = "ˈ"
+  static let secondaryStress: Character = "ˌ"
+  static let vowelSet: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
 
-    init(british: Bool) {
-        self.british = british
-        // Placeholder resource loading
-        self.golds = DataResourcesUtil.loadGold(british: british)
-        self.silvers = DataResourcesUtil.loadSilver(british: british)
+  // Gold and silver dictionaries
+  let golds: [String: Any]
+  let silvers: [String: Any]
+  let vocab: Set<Character>
+
+  init(british: Bool) {
+    self.british = british
+    // Load and grow dictionaries
+    let rawGolds = DataResourcesUtil.loadGold(british: british)
+    let rawSilvers = DataResourcesUtil.loadSilver(british: british)
+    self.golds = Lexicon.growDictionary(rawGolds)
+    self.silvers = Lexicon.growDictionary(rawSilvers)
+  
+    self.vocab = british ? Lexicon.gbVocab : Lexicon.usVocab
+  }
+    
+  /// Grows a dictionary by adding capitalized / lowercase variants of existing word keys
+  private static func growDictionary(_ d: [String: Any]) -> [String: Any] {
+    // "Inefficient but correct."
+    var e: [String: Any] = [:]
+    
+    for (k, v) in d {
+      if k.count < 2 {
+          continue
+      }
+      
+      if k == k.lowercased() {
+        if k != k.capitalized {
+            e[k.capitalized] = v
+        }
+      } else if k == k.lowercased().capitalized {
+        e[k.lowercased()] = v
+      }
     }
+    
+    // Merge the new dictionary with the original, giving priority to original
+    return e.merging(d) { (_, original) in original }
+  }
+  
+  func transcribe(_ token: MToken, ctx: TokenContext) -> (String?, Int?) {
+    var word = token.text
+    if let alias = token.`_`.alias { word = alias }
+    word = word.replacingOccurrences(of: String(UnicodeScalar(8216)!), with: "'")
+               .replacingOccurrences(of: String(UnicodeScalar(8217)!), with: "'")
+    word = word.precomposedStringWithCompatibilityMapping
+    
+    word = String(word.map { unicodeNumericIfNeeded($0) } )
+    
+    let stress: Double? = (word == word.lowercased() ? nil : (word == word.uppercased() ? capStresses.1 : capStresses.0))
+    var res = getWord(word, tag: token.tag, stress: stress, ctx: ctx)
+    /*if let ps = res.0 {
+        return (applyStress(appendCurrency(ps, currency: tk.`_`.currency), stress: tk.`_`.stress), res.1)
+    } else if Lexicon.isNumber(word: word, is_head: tk.`_`.is_head) {
+        let num = getNumber(word, currency: tk.`_`.currency, is_head: tk.`_`.is_head, num_flags: tk.`_`.num_flags)
+        return (applyStress(num.0, stress: tk.`_`.stress), num.1)
+    } else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
+        return (nil, nil)
+    } */
+    return (nil, nil)
+  }
+  
+  /// Converts Unicode digits to ASCII digits if needed
+  private func unicodeNumericIfNeeded(_ c: Character) -> Character {
+    guard c.isNumber else { return c }
+    
+    if let numericValue = c.wholeNumberValue {
+      if numericValue >= 0 && numericValue <= 9 {
+        return Character("\(numericValue)")
+      }
+    }
+    
+    return c
+  }
+  
+  /// Applies stress modifications to phonetic strings
+  private func applyStress(_ phoneticString: String?, stress: Double?) -> String? {
+    func restress(_ ps: String) -> String {
+      let characters = Array(ps)
+      var indexedChars: [(Double, Character)] = characters.enumerated().map { (Double($0), $1) }
+      
+      // Find stress positions and their corresponding vowel positions
+      var stressToVowel: [Int: Int] = [:]
+      for (i, char) in characters.enumerated() {
+        if stresses.contains(char) {
+          // Find next vowel after this stress marker
+          for j in (i + 1)..<characters.count {
+            if Lexicon.vowelSet.contains(characters[j]) {
+              stressToVowel[i] = j
+              break
+            }
+          }
+        }
+      }
+      
+      // Reposition stress markers
+      for (stressIndex, vowelIndex) in stressToVowel {
+        let stressChar = indexedChars[stressIndex].1
+        indexedChars[stressIndex] = (Double(vowelIndex) - 0.5, stressChar)
+      }
+      
+      // Sort by position and extract characters
+      return String(indexedChars.sorted { $0.0 < $1.0 }.map { $0.1 })
+    }
+    
+    guard let phoneticString else { return nil }
+    guard let stress else { return phoneticString }
+    
+    let stresses = Set<Character>([Lexicon.primaryStress, Lexicon.secondaryStress])
+          
+    if stress < -1 {
+      return phoneticString.replacingOccurrences(of: String(Lexicon.primaryStress), with: "")
+                           .replacingOccurrences(of: String(Lexicon.secondaryStress), with: "")
+    } else if stress == -1 || (stress == 0 || stress == -0.5) && phoneticString.contains(Lexicon.primaryStress) {
+      return phoneticString.replacingOccurrences(of: String(Lexicon.secondaryStress), with: "")
+                            .replacingOccurrences(of: String(Lexicon.primaryStress), with: String(Lexicon.secondaryStress))
+    } else if (stress == 0 || stress == 0.5 || stress == 1) && !phoneticString.contains(where: { stresses.contains($0) }) {
+      if !phoneticString.contains(where: { Lexicon.vowelSet.contains($0) }) {
+        return phoneticString
+      }
+      return restress(String(Lexicon.secondaryStress) + phoneticString)
+    } else if stress >= 1 && !phoneticString.contains(Lexicon.primaryStress) && phoneticString.contains(Lexicon.secondaryStress) {
+      return phoneticString.replacingOccurrences(of: String(Lexicon.secondaryStress), with: String(Lexicon.primaryStress))
+    } else if stress > 1 && !phoneticString.contains(where: { stresses.contains($0) }) {
+      if !phoneticString.contains(where: { Lexicon.vowelSet.contains($0) }) {
+        return phoneticString
+      }
+      return restress(String(Lexicon.primaryStress) + phoneticString)
+    }
+    
+    return phoneticString
+  }
+  
+  private func getWord(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext) -> (String?, Int?) {
+      let sc = getSpecialCase(word, tag: tag, stress: stress, ctx: ctx)
+      /*if sc.0 != nil { return sc }
+      var candidate = word
+      let wl = word.lowercased()
+      if word.count > 1,
+         word.replacingOccurrences(of: "'", with: "").allSatisfy({ isAsciiLetter($0) }),
+         word != word.lowercased(),
+         (tag != "NNP" || word.count > 7),
+         golds[word] == nil, silvers[word] == nil,
+         (word == word.uppercased() || word.dropFirst().lowercased() == word.dropFirst()),
+         (golds[wl] != nil || silvers[wl] != nil || [stem_s, stem_ed, stem_ing].contains(where: { fn in fn(wl, tag, stress, ctx).0 != nil })) {
+          candidate = wl
+      }
+      if isKnown(candidate, tag: tag) { return lookup(candidate, tag: tag, stress: stress, ctx: ctx) }
+      else if candidate.hasSuffix("s'"), isKnown(String(candidate.dropLast(2)) + "'s", tag: tag) { return lookup(String(candidate.dropLast(2)) + "'s", tag: tag, stress: stress, ctx: ctx) }
+      else if candidate.hasSuffix("'"), isKnown(String(candidate.dropLast()), tag: tag) { return lookup(String(candidate.dropLast()), tag: tag, stress: stress, ctx: ctx) }
+      let s = stem_s(candidate, tag: tag, stress: stress, ctx: ctx); if s.0 != nil { return s }
+      let e = stem_ed(candidate, tag: tag, stress: stress, ctx: ctx); if e.0 != nil { return e }
+      let ing = stem_ing(candidate, tag: tag, stress: (stress == nil ? 0.5 : stress), ctx: ctx); if ing.0 != nil { return ing }*/
+      return (nil, nil)
+  }
+  
+  private func getSpecialCase(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext) -> (String?, Int?) {
+    if tag == .punctuation, let target = Lexicon.addSymbols[word] {
+      return lookup(target, tag: nil, stress: -0.5, ctx: ctx)
+      /*} else if let sym = SYMBOLS[word] {
+          return lookup(sym, tag: nil, stress: nil, ctx: ctx)
+      } else if word.trimmingCharacters(in: CharacterSet(charactersIn: ".")).contains(".") {
+          let parts = word.split(separator: ".")
+          if parts.map({ $0.count }).max() ?? 0 < 3 {
+              return getNNP(word)
+          }
+      } else if word == "a" || word == "A" {
+          if tag == "DT" { return ("ɐ", 4) }
+          return ("ˈA", 4)
+      } else if ["am", "Am", "AM"].contains(word) {
+          if let t = tag, t.hasPrefix("NN") { return getNNP(word) }
+          if ctx.future_vowel == nil || word != "am" || (stress != nil && stress! > 0) {
+              if let v = golds["am"] as? String { return (v, 4) }
+          }
+          return ("ɐm", 4)
+      } else if ["an", "An", "AN"].contains(word) {
+          if word == "AN", let t = tag, t.hasPrefix("NN") { return getNNP(word) }
+          return ("ɐn", 4)
+      } else if word == "I", tag == "PRP" {
+          return (String(SECONDARY_STRESS) + "I", 4)
+      } else if ["by", "By", "BY"].contains(word), Lexicon.getParentTag(tag) == "ADV" {
+          return ("bˈI", 4)
+      } else if ["to", "To"].contains(word) || (word == "TO" && (tag == "TO" || tag == "IN")) {
+          let chosen: String
+          if ctx.future_vowel == nil { chosen = (golds["to"] as? String) ?? "to" }
+          else if ctx.future_vowel == false { chosen = "tə" }
+          else { chosen = "tʊ" }
+          return (chosen, 4)
+      } else if ["in", "In"].contains(word) || (word == "IN" && tag != "NNP") {
+          let s = (ctx.future_vowel == nil || tag != "IN") ? String(PRIMARY_STRESS) : ""
+          return (s + "ɪn", 4)
+      } else if ["the", "The"].contains(word) || (word == "THE" && tag == "DT") {
+          return (ctx.future_vowel == true ? "ði" : "ðə", 4)
+      } else if tag == "IN", word.range(of: "(?i)vs\\.?$", options: .regularExpression) != nil {
+          return lookup("versus", tag: nil, stress: nil, ctx: ctx)
+      } else if ["used", "Used", "USED"].contains(word) {
+          if (tag == "VBD" || tag == "JJ") && ctx.future_to {
+              if let m = golds["used"] as? [String: String?], let v = m["VBD"] as? String { return (v, 4) }
+          }
+          if let m = golds["used"] as? [String: String?], let v = m["DEFAULT"] as? String { return (v, 4) }*/
+    }
+    return (nil, nil)
+  }
+    
+  private func lookup(_ w: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (String?, Int?) {
+    var word = w
+    var isNNP: Bool? = nil
+    if word == word.uppercased(), golds[word] == nil {
+      word = word.lowercased()
+      isNNP = tag?.isProperNoun
+    }
+    var phoneticString: Any? = golds[word]
+    var rating = 4
+    if phoneticString == nil, isNNP != true {
+      phoneticString = silvers[word]
+      rating = 3
+    }
+    
+    if let phonemeDict = phoneticString as? [String: String?] {
+      var t = getParentTag(tag, token: w)
+      if let ctx = ctx, ctx.futureVowel == nil, phonemeDict["None"] != nil {
+        t = "XX"
+      }
+      phoneticString = phonemeDict[t ?? "DEFAULT"] ?? phonemeDict["DEFAULT"] ?? nil
+    }
+    
+    if phoneticString == nil || (isNNP == true && !(phoneticString as? String ?? "").contains(Lexicon.primaryStress)) {
+      // let nn = getNNP(word)
+      // if nn.0 != nil { return nn }
+    }
+    
+    let applied = applyStress(phoneticString as? String, stress: stress)
+    return (applied, rating)
+  }
+  
+  private func getParentTag(_ tag: NLTag?, token: String?) -> String? {
+    guard let tag = tag else { return "XX" }
+    let pennTag = pennTag(for: tag, token: token)
+    if pennTag.hasPrefix("VB") { return "VERB" }
+    if pennTag.hasPrefix("NN") { return "NOUN" }
+    if pennTag.hasPrefix("ADV") || pennTag.hasPrefix("RB") { return "ADV" }
+    if pennTag.hasPrefix("ADJ") || pennTag.hasPrefix("JJ") { return "ADJ" }
+    return "XX"
+  }
+  
+  private func getNNP(_ word: String) -> (String?, Int?) {
+    let pieces: [String?] = word.compactMap { ch in
+      let s = String(ch).uppercased()
+      if let v = golds[s] as? String { return v } else { return nil }
+    }
+    
+    if pieces.contains(where: { $0 == nil }) { return (nil, nil) }
+    
+    let joined = applyStress(pieces.compactMap{ $0 }.joined(separator: ""), stress: 0)
+    if let joined {
+      let parts = joined.split(separator: Lexicon.secondaryStress)
+      let ps = parts.joined(separator: String(Lexicon.primaryStress))
+        return (ps, 3)
+    }
+  
+    return (nil, nil)
+  }
+  
     /*
-    private func getNNP(_ word: String) -> (String?, Int?) {
-        let pieces: [String?] = word.compactMap { ch in
-            let s = String(ch).uppercased()
-            if let v = golds[s] as? String { return v } else { return nil }
-        }
-        if pieces.contains(where: { $0 == nil }) { return (nil, nil) }
-        let joined = applyStress(pieces.joined(), stress: 0)
-        if let joined = joined {
-            let parts = joined.split(separator: SECONDARY_STRESS)
-            let ps = parts.joined(separator: String(PRIMARY_STRESS))
-            return (ps, 3)
-        }
-        return (nil, nil)
-    }
-
-    private func getSpecialCase(_ word: String, tag: String?, stress: Double?, ctx: TokenContext) -> (String?, Int?) {
-        if tag == "ADD", let target = ADD_SYMBOLS[word] {
-            return lookup(target, tag: nil, stress: -0.5, ctx: ctx)
-        } else if let sym = SYMBOLS[word] {
-            return lookup(sym, tag: nil, stress: nil, ctx: ctx)
-        } else if word.trimmingCharacters(in: CharacterSet(charactersIn: ".")).contains(".") {
-            let parts = word.split(separator: ".")
-            if parts.map({ $0.count }).max() ?? 0 < 3 {
-                return getNNP(word)
-            }
-        } else if word == "a" || word == "A" {
-            if tag == "DT" { return ("ɐ", 4) }
-            return ("ˈA", 4)
-        } else if ["am", "Am", "AM"].contains(word) {
-            if let t = tag, t.hasPrefix("NN") { return getNNP(word) }
-            if ctx.future_vowel == nil || word != "am" || (stress != nil && stress! > 0) {
-                if let v = golds["am"] as? String { return (v, 4) }
-            }
-            return ("ɐm", 4)
-        } else if ["an", "An", "AN"].contains(word) {
-            if word == "AN", let t = tag, t.hasPrefix("NN") { return getNNP(word) }
-            return ("ɐn", 4)
-        } else if word == "I", tag == "PRP" {
-            return (String(SECONDARY_STRESS) + "I", 4)
-        } else if ["by", "By", "BY"].contains(word), Lexicon.getParentTag(tag) == "ADV" {
-            return ("bˈI", 4)
-        } else if ["to", "To"].contains(word) || (word == "TO" && (tag == "TO" || tag == "IN")) {
-            let chosen: String
-            if ctx.future_vowel == nil { chosen = (golds["to"] as? String) ?? "to" }
-            else if ctx.future_vowel == false { chosen = "tə" }
-            else { chosen = "tʊ" }
-            return (chosen, 4)
-        } else if ["in", "In"].contains(word) || (word == "IN" && tag != "NNP") {
-            let s = (ctx.future_vowel == nil || tag != "IN") ? String(PRIMARY_STRESS) : ""
-            return (s + "ɪn", 4)
-        } else if ["the", "The"].contains(word) || (word == "THE" && tag == "DT") {
-            return (ctx.future_vowel == true ? "ði" : "ðə", 4)
-        } else if tag == "IN", word.range(of: "(?i)vs\\.?$", options: .regularExpression) != nil {
-            return lookup("versus", tag: nil, stress: nil, ctx: ctx)
-        } else if ["used", "Used", "USED"].contains(word) {
-            if (tag == "VBD" || tag == "JJ") && ctx.future_to {
-                if let m = golds["used"] as? [String: String?], let v = m["VBD"] as? String { return (v, 4) }
-            }
-            if let m = golds["used"] as? [String: String?], let v = m["DEFAULT"] as? String { return (v, 4) }
-        }
-        return (nil, nil)
-    }
-
-    public static func getParentTag(_ tag: String?) -> String? {
-        guard let tag = tag else { return tag }
-        if tag.hasPrefix("VB") { return "VERB" }
-        if tag.hasPrefix("NN") { return "NOUN" }
-        if tag.hasPrefix("ADV") || tag.hasPrefix("RB") { return "ADV" }
-        if tag.hasPrefix("ADJ") || tag.hasPrefix("JJ") { return "ADJ" }
-        return tag
-    }
-
     private func isKnown(_ word: String, tag: String?) -> Bool {
         if golds[word] != nil || SYMBOLS[word] != nil || silvers[word] != nil { return true }
         if !word.allSatisfy({ ch in
@@ -98,30 +293,6 @@ final class Lexicon {
         if word == word.uppercased(), golds[word.lowercased()] != nil { return true }
         let idx = word.index(after: word.startIndex)
         return word[idx...].uppercased() == word[idx...]
-    }
-
-    private func lookup(_ w: String, tag: String?, stress: Double?, ctx: TokenContext?) -> (String?, Int?) {
-        var word = w
-        var isNNP: Bool? = nil
-        if word == word.uppercased(), golds[word] == nil {
-            word = word.lowercased()
-            isNNP = (tag == "NNP")
-        }
-        var ps: Any? = golds[word]
-        var rating = 4
-        if ps == nil, isNNP != true { ps = silvers[word]; rating = 3 }
-        if let dict = ps as? [String: String?] {
-            var t = tag
-            if let ctx = ctx, ctx.future_vowel == nil, dict["None"] != nil { t = "None" }
-            else if dict[t ?? ""] == nil { t = Lexicon.getParentTag(t) }
-            ps = dict[t ?? "DEFAULT"] ?? dict["DEFAULT"] ?? nil
-        }
-        if ps == nil || (isNNP == true && !(ps as? String ?? "").contains(PRIMARY_STRESS)) {
-            let nn = getNNP(word)
-            if nn.0 != nil { return nn }
-        }
-        let applied = applyStress(ps as? String, stress: stress)
-        return (applied, rating)
     }
 
     private func pluralizeS(_ stem: String?) -> String? {
@@ -185,29 +356,6 @@ final class Lexicon {
         guard let s = stem else { return (nil, nil) }
         let looked = lookup(s, tag: tag, stress: stress, ctx: ctx)
         return (progIng(looked.0), looked.1)
-    }
-
-    private func getWord(_ word: String, tag: String?, stress: Double?, ctx: TokenContext) -> (String?, Int?) {
-        let sc = getSpecialCase(word, tag: tag, stress: stress, ctx: ctx)
-        if sc.0 != nil { return sc }
-        var candidate = word
-        let wl = word.lowercased()
-        if word.count > 1,
-           word.replacingOccurrences(of: "'", with: "").allSatisfy({ isAsciiLetter($0) }),
-           word != word.lowercased(),
-           (tag != "NNP" || word.count > 7),
-           golds[word] == nil, silvers[word] == nil,
-           (word == word.uppercased() || word.dropFirst().lowercased() == word.dropFirst()),
-           (golds[wl] != nil || silvers[wl] != nil || [stem_s, stem_ed, stem_ing].contains(where: { fn in fn(wl, tag, stress, ctx).0 != nil })) {
-            candidate = wl
-        }
-        if isKnown(candidate, tag: tag) { return lookup(candidate, tag: tag, stress: stress, ctx: ctx) }
-        else if candidate.hasSuffix("s'"), isKnown(String(candidate.dropLast(2)) + "'s", tag: tag) { return lookup(String(candidate.dropLast(2)) + "'s", tag: tag, stress: stress, ctx: ctx) }
-        else if candidate.hasSuffix("'"), isKnown(String(candidate.dropLast()), tag: tag) { return lookup(String(candidate.dropLast()), tag: tag, stress: stress, ctx: ctx) }
-        let s = stem_s(candidate, tag: tag, stress: stress, ctx: ctx); if s.0 != nil { return s }
-        let e = stem_ed(candidate, tag: tag, stress: stress, ctx: ctx); if e.0 != nil { return e }
-        let ing = stem_ing(candidate, tag: tag, stress: (stress == nil ? 0.5 : stress), ctx: ctx); if ing.0 != nil { return ing }
-        return (nil, nil)
     }
 
     private static func isCurrency(_ word: String) -> Bool {
@@ -337,27 +485,7 @@ final class Lexicon {
         }
         return ps
     }
-
-    public func transcribe(_ tk: MToken, ctx: TokenContext) -> (String?, Int?) {
-        var word = (tk.text)
-        if let alias = tk.`_`.alias { word = alias }
-        word = word.replacingOccurrences(of: String(UnicodeScalar(8216)!), with: "'")
-            .replacingOccurrences(of: String(UnicodeScalar(8217)!), with: "'")
-        word = word.precomposedStringWithCompatibilityMapping()
-        word = String(word.map { Character(unicodeNumericIfNeeded($0)) })
-        let stress: Double? = (word == word.lowercased() ? nil : (word == word.uppercased() ? cap_stresses.1 : cap_stresses.0))
-        var res = getWord(word, tag: tk.tag, stress: stress, ctx: ctx)
-        if let ps = res.0 {
-            return (applyStress(appendCurrency(ps, currency: tk.`_`.currency), stress: tk.`_`.stress), res.1)
-        } else if Lexicon.isNumber(word: word, is_head: tk.`_`.is_head) {
-            let num = getNumber(word, currency: tk.`_`.currency, is_head: tk.`_`.is_head, num_flags: tk.`_`.num_flags)
-            return (applyStress(num.0, stress: tk.`_`.stress), num.1)
-        } else if !word.unicodeScalars.allSatisfy({ LEXICON_ORDS.contains(Int($0.value)) }) {
-            return (nil, nil)
-        }
-        return (nil, nil)
-    }
-
+     
     private static func isNumber(word: String, is_head: Bool) -> Bool {
         if word.allSatisfy({ !String($0).range(of: "^[0-9]$", options: .regularExpression, range: nil, locale: nil).map { _ in true }! }) { return false }
         let suffixes: [String] = ["ing", "'d", "ed", "'s"] + Array(ORDINALS) + ["s"]

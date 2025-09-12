@@ -1,12 +1,6 @@
 import Foundation
 import NaturalLanguage
 
-extension Range where Bound: Comparable {
-    func contains(_ other: Range<Bound>) -> Bool {
-        return self.lowerBound <= other.lowerBound && self.upperBound >= other.upperBound
-    }
-}
-
 // Main G2P pipeline for English text
 final public class EnglishG2P {
   private let british: Bool
@@ -28,7 +22,7 @@ final public class EnglishG2P {
 
   public init(british: Bool = false, unk: String = "❓") {
     self.british = british
-    self.tagger = NLTagger(tagSchemes: [.lexicalClass])
+    self.tagger = NLTagger(tagSchemes: [.nameTypeOrLexicalClass])
     self.lexicon = Lexicon(british: british)
     self.fallback = EnglishFallbackNetwork(british: british)
     self.unk = unk
@@ -160,7 +154,7 @@ final public class EnglishG2P {
     tagger.enumerateTags(
       in: preprocessedText.text.startIndex..<preprocessedText.text.endIndex,
       unit: .word,
-      scheme: .lexicalClass,
+      scheme: .nameTypeOrLexicalClass,
       options: options) { tag, tokenRange in
       if let tag = tag {
         let word = String(preprocessedText.text[tokenRange])
@@ -286,9 +280,6 @@ final public class EnglishG2P {
       "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
   ]
 
-  // Character code ranges for lexicon validation
-  static let LEXICON_ORDS: [Int] = [39, 45] + Array(65...90) + Array(97...122)
-
   // Phonetic character sets
   static let CONSONANTS: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
   // private let EXTENDER: Character = "ː"
@@ -303,17 +294,10 @@ final public class EnglishG2P {
   static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
 
   // Symbol mappings
-  static let ADD_SYMBOLS: [String: String] = [".": "dot", "/": "slash"]
   static let SYMBOLS: [String: String] = ["%": "percent", "&": "and", "+": "plus", "@": "at"]
-
-  // Phonetic vocabularies for US and GB English
-  static let US_VOCAB: Set<Character> = Set("AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʤʧˈˌθᵊᵻʔ") // ɐ
-  static let GB_VOCAB: Set<Character> = Set("AIQWYabdfhijklmnpstuvwzðŋɑɒɔəɛɜɡɪɹʃʊʌʒʤʧˈˌːθᵊ") // ɐ
 
   // Stress markers
   static let STRESSES = "ˌˈ"
-  static let PRIMARY_STRESS: Character = "ˈ"  // STRESSES[1]
-  static let SECONDARY_STRESS: Character = "ˌ" // STRESSES[0]
   static let VOWELS: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
   
   func subtokenize(word: String) -> [String] {
@@ -413,21 +397,21 @@ final public class EnglishG2P {
     print(tokens.forEach { $0.debugPrint() })
     var words = retokenize(tokens)
     
-        /*
-        var ctx = TokenContext()
-        for i in stride(from: words.count - 1, through: 0, by: -1) {
-            if var w = words[i] as? MToken {
-                if w.phonemes == nil {
-                    let out = lexicon.transcribe(w, ctx: ctx)
-                    w.phonemes = out.0
-                    w.`_`.rating = out.1
+    var ctx = TokenContext()
+    for i in stride(from: words.count - 1, through: 0, by: -1) {
+      if var w = words[i] as? MToken {
+        if w.phonemes == nil {
+          let out = lexicon.transcribe(w, ctx: ctx)
+          w.phonemes = out.0
+          w.`_`.rating = out.1
+        }
+      }
+        /*        if w.phonemes == nil, let fb = fallback {
+                  let out = fb.call(w)
+                   w.phonemes = out.0
+                  w.`_`.rating = out.1
                 }
-                if w.phonemes == nil, let fb = fallback {
-                    let out = fb.call(w)
-                    w.phonemes = out.0
-                    w.`_`.rating = out.1
-                }
-                ctx = G2P.tokenContext(ctx, ps: w.phonemes, token: w)
+              ctx = G2P.tokenContext(ctx, ps: w.phonemes, token: w)
                 words[i] = w
             } else if var arr = words[i] as? [MToken] {
                 var left = 0
@@ -481,9 +465,9 @@ final public class EnglishG2P {
                     G2P.resolveTokens(&arr)
                 }
                 words[i] = arr
-            }
+            }*/
         }
-        var finalTokens: [MToken] = words.map { item in
+        /*var finalTokens: [MToken] = words.map { item in
             if let arr = item as? [MToken] { return mergeTokens(arr, unk: self.unk) }
             return item as! MToken
         }

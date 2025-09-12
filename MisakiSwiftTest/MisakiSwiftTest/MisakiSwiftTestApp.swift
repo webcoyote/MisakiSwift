@@ -16,7 +16,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     print("App starting")
     let g2p = EnglishG2P(british: true)
     // let _  = g2p.phonemize(text: "[Misaki](/misˈɑki/) is a G2P engine    designed for [Kokoro](/kˈOkəɹO/) models.")
-    let _  = g2p.phonemize(text: "This costs 100€ – and it is not cheap.")
+    let _  = g2p.phonemize(text: "I found it from site google.com and it was good.")
     return true
   }
 }
