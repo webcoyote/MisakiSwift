@@ -140,3 +140,17 @@ func pennTag(for nlTag: NLTag, token: String? = nil) -> String {
         return "XX"
     }
 }
+
+func isPersonalPrononun(tag: NLTag, token: String) -> Bool {
+  let personalPronouns: Set<String> = [
+    "i", "me", "my", "mine", "myself",
+    "you", "your", "yours", "yourself", "yourselves",
+    "he", "him", "his", "himself",
+    "she", "her", "hers", "herself",
+    "it", "its", "itself",
+    "we", "us", "our", "ours", "ourselves",
+    "they", "them", "their", "theirs", "themselves"
+  ]
+  
+  return tag == .pronoun && personalPronouns.contains(token.lowercased())
+}

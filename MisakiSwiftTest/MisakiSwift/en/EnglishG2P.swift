@@ -283,7 +283,6 @@ final public class EnglishG2P {
   // Phonetic character sets
   static let CONSONANTS: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
   // private let EXTENDER: Character = "ː"
-  static let US_TAUS: Set<Character> = Set("AIOWYiuæɑəɛɪɹʊʌ")
 
   // Currency mappings
   static let CURRENCIES: [String: (String, String)] = [
@@ -292,9 +291,6 @@ final public class EnglishG2P {
       "€": ("euro", "cent")
   ]
   static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
-
-  // Symbol mappings
-  static let SYMBOLS: [String: String] = ["%": "percent", "&": "and", "+": "plus", "@": "at"]
 
   // Stress markers
   static let STRESSES = "ˌˈ"
