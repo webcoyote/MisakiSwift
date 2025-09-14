@@ -7,11 +7,7 @@ extension NLTag {
   }
 }
 
-// Lexicon
 final class Lexicon {
-  let british: Bool
-  let capStresses: (Double, Double) = (0.5, 2.0)
-
   static let usVocab: Set<Character> = Set("AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʤʧˈˌθᵊᵻʔ")
   static let gbVocab: Set<Character> = Set("AIQWYabdfhijklmnpstuvwzðŋɑɒɔəɛɜɡɪɹʃʊʌʒʤʧˈˌːθᵊ")
   static let ordinals: [Int] = [39, 45] + Array(65...90) + Array(97...122)
@@ -26,11 +22,15 @@ final class Lexicon {
       "£": ("pound", "pence"),
       "€": ("euro", "cent")
   ]
+  
+  private let british: Bool
+  private let capStresses: (Double, Double) = (0.5, 2.0)
+  private let num2Words = EnglishNum2Word()
 
   // Gold and silver dictionaries
-  let golds: [String: Any]
-  let silvers: [String: Any]
-  let vocab: Set<Character>
+  private let golds: [String: Any]
+  private let silvers: [String: Any]
+  private let vocab: Set<Character>
 
   init(british: Bool) {
     self.british = british
@@ -451,42 +451,64 @@ final class Lexicon {
         return c.isNumber || c == "," || c == "." || (is_head && i == 0 && c == "-")
     }
   }
+    
+  /// Helper function to check if a string contains only digits
+  private func isPlainDigits(_ string: String) -> Bool {
+    return !string.isEmpty && string.allSatisfy { $0.isNumber }
+  }
+  
+  private func getNumber(_ input: String, currency: String?, is_head: Bool, num_flags: String) -> (String?, Int?) {
+    func appendLookup(_ w: String, s: Double?) {
+      let looked = lookup(w, tag: nil, stress: s, ctx: nil)
+      if let p = looked.0, let r = looked.1 { result.append((p, r)) }
+    }
+    
+    func extend_num(_ num: String, first: Bool = true, escape: Bool = false) {
+      let splits: [String]
+      if escape {
+        splits = num.split(whereSeparator: { !$0.isLetter }).map(String.init)
+      } else {
+        if let doubleVal = Double(num) {
+          let val = Decimal(doubleVal)
+          splits = num2Words.convert(val).split(separator: " ").map(String.init)
+        } else {
+          splits = num.split(whereSeparator: { !$0.isLetter }).map(String.init)
+        }
+      }
+      
+      for (i, w) in splits.enumerated() {
+        if w != "and" || num_flags.contains("&") {
+          if first && i == 0 && splits.count > 1 && w == "one" && num_flags.contains("a") {
+            result.append(("ə", 4))
+          } else {
+            let s = (w == "point") ? -2.0 : nil
+            appendLookup(w, s: s)
+          }
+        } else if w == "and" && num_flags.contains("n") && !result.isEmpty {
+          let last = result.removeLast()
+          result.append((last.0 + "ən", last.1))
+        }
+      }
+    }
+    
+    var word = input
+    var suffix: String? = nil
+    if let m = word.range(of: "[a-z']+$", options: .regularExpression) {
+      suffix = String(word[m])
+      word.removeSubrange(m)
+    }
+    
+    var result: [(String, Int)] = []
+    
+    if word.hasPrefix("-") {
+      appendLookup("minus", s: nil)
+      word.removeFirst()
+    }
+    
+    return (nil, nil)
+  }
   
     /*
-    private func getNumber(_ input: String, currency: String?, is_head: Bool, num_flags: String) -> (String?, Int?) {
-        var word = input
-        var suffix: String? = nil
-        if let m = word.range(of: "[a-z']+$", options: .regularExpression) {
-            suffix = String(word[m])
-            word.removeSubrange(m)
-        }
-        var result: [(String, Int)] = []
-        func appendLookup(_ w: String, s: Double?) {
-            let looked = lookup(w, tag: nil, stress: s, ctx: nil)
-            if let p = looked.0, let r = looked.1 { result.append((p, r)) }
-        }
-        if word.hasPrefix("-") {
-            appendLookup("minus", s: nil)
-            word.removeFirst()
-        }
-        func extend_num(_ num: String, first: Bool = true, escape: Bool = false) {
-            let splits: [String]
-            if escape { splits = num.split(whereSeparator: { !$0.isLetter }).map(String.init) }
-            else { if let val = Int(num) { splits = num2words(val, to: nil).split(separator: " ").map(String.init) } else { splits = [num] } }
-            for (i, w) in splits.enumerated() {
-                if w != "and" || num_flags.contains("&") {
-                    if first && i == 0 && splits.count > 1 && w == "one" && num_flags.contains("a") {
-                        result.append(("ə", 4))
-                    } else {
-                        let s = (w == "point") ? -2.0 : nil
-                        appendLookup(w, s: s)
-                    }
-                } else if w == "and" && num_flags.contains("n") && !result.isEmpty {
-                    let last = result.removeLast()
-                    result.append((last.0 + "ən", last.1))
-                }
-            }
-        }
         if isPlainDigits(word), let sf = suffix, ORDINALS.contains(sf) {
             if let n = Int(word) { extend_num(num2words(n, to: "ordinal"), escape: true) }
         } else if result.isEmpty, word.count == 4, currency == nil, isPlainDigits(word) {

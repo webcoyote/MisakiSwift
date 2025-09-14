@@ -15,6 +15,7 @@
 		5236AA7B2E74A08000131097 /* Range+Contains.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236AA7A2E74A07C00131097 /* Range+Contains.swift */; };
 		5236AA7D2E74A09500131097 /* TokenContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236AA7C2E74A09300131097 /* TokenContext.swift */; };
 		5236AA802E74B3C900131097 /* PennTagUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236AA7F2E74B3C800131097 /* PennTagUtil.swift */; };
+		5236AA822E76A4DE00131097 /* EnglishNum2Word.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */; };
 		524BB4892E48B09E00132B5F /* gb_gold.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4852E48B07300132B5F /* gb_gold.json */; };
 		524BB48A2E48B0A100132B5F /* gb_silver.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4862E48B07300132B5F /* gb_silver.json */; };
 /* End PBXBuildFile section */
@@ -41,6 +42,7 @@
 		5236AA7A2E74A07C00131097 /* Range+Contains.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Range+Contains.swift"; sourceTree = "<group>"; };
 		5236AA7C2E74A09300131097 /* TokenContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenContext.swift; sourceTree = "<group>"; };
 		5236AA7F2E74B3C800131097 /* PennTagUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PennTagUtil.swift; sourceTree = "<group>"; };
+		5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnglishNum2Word.swift; sourceTree = "<group>"; };
 		524BB4542E489FB200132B5F /* MisakiSwiftTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MisakiSwiftTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		524BB4612E489FB300132B5F /* MisakiSwiftTestTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MisakiSwiftTestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		524BB46B2E489FB300132B5F /* MisakiSwiftTestUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MisakiSwiftTestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -134,6 +136,7 @@
 				524BB4832E48AEE100132B5F /* DataResourcesUtil.swift */,
 				522648C92E6C2193008519BC /* EnglishFallbackNetwork.swift */,
 				524BB47F2E489FE000132B5F /* EnglishG2P.swift */,
+				5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */,
 				524BB4822E48AE2500132B5F /* Lexicon.swift */,
 				524BB4812E48A3E900132B5F /* MToken.swift */,
 				5236AA7A2E74A07C00131097 /* Range+Contains.swift */,
@@ -307,6 +310,7 @@
 				5236AA7D2E74A09500131097 /* TokenContext.swift in Sources */,
 				5236AA7B2E74A08000131097 /* Range+Contains.swift in Sources */,
 				522648CD2E6C2426008519BC /* DataResourcesUtil.swift in Sources */,
+				5236AA822E76A4DE00131097 /* EnglishNum2Word.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
