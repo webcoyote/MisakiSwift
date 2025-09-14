@@ -284,12 +284,7 @@ final public class EnglishG2P {
   static let CONSONANTS: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
   // private let EXTENDER: Character = "ː"
 
-  // Currency mappings
-  static let CURRENCIES: [String: (String, String)] = [
-      "$": ("dollar", "cent"),
-      "£": ("pound", "pence"),
-      "€": ("euro", "cent")
-  ]
+ 
   static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
 
   // Stress markers
@@ -332,7 +327,7 @@ final public class EnglishG2P {
       
         if token.`_`.alias != nil || token.phonemes != nil {
           // Do nothing at his point
-        } else if token.tag == .otherWord, EnglishG2P.CURRENCIES[token.text] != nil {
+        } else if token.tag == .otherWord, Lexicon.currencies[token.text] != nil {
           currency = token.text
           token.phonemes = ""
           token.`_`.rating = 4

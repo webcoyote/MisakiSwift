@@ -21,6 +21,11 @@ final class Lexicon {
   static let vowelSet: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
   static let symbolSet: [String: String] = ["%": "percent", "&": "and", "+": "plus", "@": "at"]
   static let usTaus: Set<Character> = Set("AIOWYiuæɑəɛɪɹʊʌ")
+  static let currencies: [String: (String, String)] = [
+      "$": ("dollar", "cent"),
+      "£": ("pound", "pence"),
+      "€": ("euro", "cent")
+  ]
 
   // Gold and silver dictionaries
   let golds: [String: Any]
@@ -72,12 +77,12 @@ final class Lexicon {
     
     let stress: Double? = (word == word.lowercased() ? nil : (word == word.uppercased() ? capStresses.1 : capStresses.0))
     var res = getWord(word, tag: token.tag, stress: stress, ctx: ctx)
-    /*if let ps = res.0 {
-        return (applyStress(appendCurrency(ps, currency: tk.`_`.currency), stress: tk.`_`.stress), res.1)
-    } else if Lexicon.isNumber(word: word, is_head: tk.`_`.is_head) {
-        let num = getNumber(word, currency: tk.`_`.currency, is_head: tk.`_`.is_head, num_flags: tk.`_`.num_flags)
-        return (applyStress(num.0, stress: tk.`_`.stress), num.1)
-    } else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
+    if let phoneme = res.phoneme {
+      return (applyStress(appendCurrency(phoneme, currency: token.`_`.currency), stress: token.`_`.stress), res.rating)
+    } else if isNumber(word: word, is_head: token.`_`.is_head) {
+        // let num = getNumber(word, currency: token.`_`.currency, is_head: token.`_`.is_head, num_flags: token.`_`.num_flags)
+        // return (applyStress(num.0, stress: token.`_`.stress), num.1)
+    } /*else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
         return (nil, nil)
     } */
     return (nil, nil)
@@ -154,7 +159,7 @@ final class Lexicon {
     return phoneticString
   }
   
-  private func getWord(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext) -> (String?, Int?) {
+  private func getWord(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext) -> (phoneme: String?, rating: Int?) {
     let sc = getSpecialCase(word, tag: tag, stress: stress, ctx: ctx)
     if sc.phoneme != nil { return sc }
     var candidate = word
@@ -172,12 +177,22 @@ final class Lexicon {
     
     if isKnown(candidate) {
       return lookup(candidate, tag: tag, stress: stress, ctx: ctx)
-    } /*else if candidate.hasSuffix("s'"), isKnown(String(candidate.dropLast(2)) + "'s", tag: tag) { return lookup(String(candidate.dropLast(2)) + "'s", tag: tag, stress: stress, ctx: ctx) }
-      else if candidate.hasSuffix("'"), isKnown(String(candidate.dropLast()), tag: tag) { return lookup(String(candidate.dropLast()), tag: tag, stress: stress, ctx: ctx) }
-      let s = stem_s(candidate, tag: tag, stress: stress, ctx: ctx); if s.0 != nil { return s }
-      let e = stem_ed(candidate, tag: tag, stress: stress, ctx: ctx); if e.0 != nil { return e }
-      let ing = stem_ing(candidate, tag: tag, stress: (stress == nil ? 0.5 : stress), ctx: ctx); if ing.0 != nil { return ing }*/
-      return (nil, nil)
+    } else if candidate.hasSuffix("s'"), isKnown(String(candidate.dropLast(2)) + "'s") {
+      return lookup(String(candidate.dropLast(2)) + "'s", tag: tag, stress: stress, ctx: ctx)
+    } else if candidate.hasSuffix("'"), isKnown(String(candidate.dropLast())) {
+      return lookup(String(candidate.dropLast()), tag: tag, stress: stress, ctx: ctx)
+    }
+    
+    let s = stem_s(candidate, tag: tag, stress: stress, ctx: ctx)
+    if s.phoneme != nil { return s }
+    
+    let ed = stem_ed(candidate, tag: tag, stress: stress, ctx: ctx)
+    if ed.phoneme != nil { return ed }
+    
+    let ing = stem_ing(candidate, tag: tag, stress: (stress == nil ? 0.5 : stress), ctx: ctx)
+    if ing.phoneme != nil { return ing }
+    
+    return (nil, nil)
   }
   
   private func getSpecialCase(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext) -> (phoneme: String?, rating: Int?) {
@@ -319,7 +334,7 @@ final class Lexicon {
     return word[idx...].uppercased() == word[idx...]
   }
   
-  private func stem_s(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (String?, Int?) {
+  private func stem_s(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (phoneme: String?, rating: Int?) {
     guard word.count >= 3, word.hasSuffix("s") else { return (nil, nil) }
     var stem: String?
     
@@ -353,7 +368,7 @@ final class Lexicon {
     return stem + "ᵻd"
   }
 
-  private func stem_ed(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (String?, Int?) {
+  private func stem_ed(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (phoneme: String?, rating: Int?) {
     guard word.count >= 4, word.hasSuffix("d") else { return (nil, nil) }
     var stem: String?
     
@@ -382,7 +397,7 @@ final class Lexicon {
     return stem + "ɪŋ"
   }
 
-  private func stem_ing(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (String?, Int?) {
+  private func stem_ing(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext?) -> (phoneme: String?, rating: Int?) {
     guard word.count >= 5, word.hasSuffix("ing") else { return (nil, nil) }
     var stem: String?
     
@@ -399,15 +414,45 @@ final class Lexicon {
     return (progIng(looked.phoneme), looked.rating)
   }
   
-    /*
-
-    private static func isCurrency(_ word: String) -> Bool {
-        if !word.contains(".") { return true }
-        if word.filter({ $0 == "." }).count > 1 { return false }
-        if let cents = word.split(separator: ".").last { return cents.count < 3 || Set(cents) == Set(["0"]) }
-        return false
+  private func isCurrency(_ word: String) -> Bool {
+    if !word.contains(".") { return true }
+    if word.filter({ $0 == "." }).count > 1 { return false }
+    if let cents = word.split(separator: ".").last { return cents.count < 3 || Set(cents) == Set(["0"]) }
+    
+    return false
+  }
+  
+  private func appendCurrency(_ phoneme: String?, currency: String?) -> String? {
+    guard let phoneme, let currency else { return phoneme }
+    
+    if let pair = Lexicon.currencies[currency] {
+      if let plural = stem_s(pair.0 + "s", tag: nil, stress: nil, ctx: nil).phoneme {
+        return phoneme + " " + plural
+      }
     }
-
+    
+    return phoneme
+  }
+  
+  private func isNumber(word: String, is_head: Bool) -> Bool {
+    if word.allSatisfy({ !$0.isNumber }) { return false }
+    
+    let ordinalSuffixes = ["st", "nd", "rd", "th"]
+    let suffixes: [String] = ["ing", "'d", "ed", "'s"] + ordinalSuffixes + ["s"]
+    var core = word
+    for s in suffixes {
+      if core.hasSuffix(s) {
+        core = String(core.dropLast(s.count))
+        break
+      }
+    }
+    
+    return core.enumerated().allSatisfy { (i, c) in
+        return c.isNumber || c == "," || c == "." || (is_head && i == 0 && c == "-")
+    }
+  }
+  
+    /*
     private func getNumber(_ input: String, currency: String?, is_head: Bool, num_flags: String) -> (String?, Int?) {
         var word = input
         var suffix: String? = nil
@@ -516,29 +561,6 @@ final class Lexicon {
         else if let s = suffix, s == "ed" || s == "'d" { text = pastEd(text) ?? text }
         else if suffix == "ing" { text = progIng(text) ?? text }
         return (text, rating)
-    }
-
-    private func appendCurrency(_ ps: String?, currency: String?) -> String? {
-        guard let ps = ps else { return nil }
-        guard let currency = currency else { return ps }
-        if let pair = CURRENCIES[currency] {
-            if let plural = stem_s(pair.0 + "s", tag: nil, stress: nil, ctx: nil).0 {
-                return ps + " " + plural
-            }
-        }
-        return ps
-    }
-     
-    private static func isNumber(word: String, is_head: Bool) -> Bool {
-        if word.allSatisfy({ !String($0).range(of: "^[0-9]$", options: .regularExpression, range: nil, locale: nil).map { _ in true }! }) { return false }
-        let suffixes: [String] = ["ing", "'d", "ed", "'s"] + Array(ORDINALS) + ["s"]
-        var core = word
-        for s in suffixes {
-            if core.hasSuffix(s) { core = String(core.dropLast(s.count)); break }
-        }
-        return core.enumerated().allSatisfy { (i, c) in
-            return String(c).range(of: "^[0-9]$", options: .regularExpression) != nil || c == "," || c == "." || (is_head && i == 0 && c == "-")
-        }
     }
     */
 }
