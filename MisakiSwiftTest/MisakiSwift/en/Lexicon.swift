@@ -76,15 +76,16 @@ final class Lexicon {
     word = String(word.map { unicodeNumericIfNeeded($0) } )
     
     let stress: Double? = (word == word.lowercased() ? nil : (word == word.uppercased() ? capStresses.1 : capStresses.0))
-    var res = getWord(word, tag: token.tag, stress: stress, ctx: ctx)
+    let res = getWord(word, tag: token.tag, stress: stress, ctx: ctx)
     if let phoneme = res.phoneme {
       return (applyStress(appendCurrency(phoneme, currency: token.`_`.currency), stress: token.`_`.stress), res.rating)
     } else if isNumber(word: word, is_head: token.`_`.is_head) {
-        // let num = getNumber(word, currency: token.`_`.currency, is_head: token.`_`.is_head, num_flags: token.`_`.num_flags)
-        // return (applyStress(num.0, stress: token.`_`.stress), num.1)
-    } /*else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
-        return (nil, nil)
-    } */
+      let num = getNumber(word, currency: token.`_`.currency, is_head: token.`_`.is_head, num_flags: token.`_`.num_flags)
+      return (applyStress(num.0, stress: token.`_`.stress), num.1)
+    } else if !word.unicodeScalars.allSatisfy({ Lexicon.ordinals.contains(Int($0.value)) }) {
+      return (nil, nil)
+    }
+    
     return (nil, nil)
   }
   
@@ -458,6 +459,8 @@ final class Lexicon {
   }
   
   private func getNumber(_ input: String, currency: String?, is_head: Bool, num_flags: String) -> (String?, Int?) {
+    var result: [(String, Int)] = []
+
     func appendLookup(_ w: String, s: Double?) {
       let looked = lookup(w, tag: nil, stress: s, ctx: nil)
       if let p = looked.0, let r = looked.1 { result.append((p, r)) }
@@ -468,8 +471,7 @@ final class Lexicon {
       if escape {
         splits = num.split(whereSeparator: { !$0.isLetter }).map(String.init)
       } else {
-        if let doubleVal = Double(num) {
-          let val = Decimal(doubleVal)
+        if let val = Decimal(string: num) {
           splits = num2Words.convert(val).split(separator: " ").map(String.init)
         } else {
           splits = num.split(whereSeparator: { !$0.isLetter }).map(String.init)
@@ -497,92 +499,103 @@ final class Lexicon {
       suffix = String(word[m])
       word.removeSubrange(m)
     }
-    
-    var result: [(String, Int)] = []
-    
+        
     if word.hasPrefix("-") {
       appendLookup("minus", s: nil)
       word.removeFirst()
     }
     
-    return (nil, nil)
-  }
-  
-    /*
-        if isPlainDigits(word), let sf = suffix, ORDINALS.contains(sf) {
-            if let n = Int(word) { extend_num(num2words(n, to: "ordinal"), escape: true) }
-        } else if result.isEmpty, word.count == 4, currency == nil, isPlainDigits(word) {
-            if let n = Int(word) { extend_num(num2words(n, to: "year"), escape: true) }
-        } else if !is_head && !word.contains(".") {
-            let num = word.replacingOccurrences(of: ",", with: "")
-            if num.first == "0" || num.count > 3 {
-                for n in num { extend_num(String(n), first: false) }
-            } else if num.count == 3 && !num.hasSuffix("00") {
-                extend_num(String(num.first!))
-                if num[num.index(num.startIndex, offsetBy: 1)] == "0" {
-                    result.append(lookup("O", tag: nil, stress: -2, ctx: nil) as! (String, Int))
-                    extend_num(String(num.last!), first: false)
-                } else {
-                    extend_num(String(num.suffix(2)), first: false)
-                }
-            } else {
-                extend_num(num)
-            }
-        } else if word.filter({ $0 == "." }).count > 1 || !is_head {
-            var first = true
-            for num in word.replacingOccurrences(of: ",", with: "").split(separator: ".").map(String.init) {
-                if num.isEmpty { }
-                else if num.first == "0" || (num.count != 2 && num.dropFirst().contains(where: { $0 != "0" })) {
-                    for n in num { extend_num(String(n), first: false) }
-                } else {
-                    extend_num(num, first: first)
-                }
-                first = false
-            }
-        } else if let curr = currency, CURRENCIES[curr] != nil, Lexicon.isCurrency(word) {
-            var pairs: [(Int, String)] = []
-            let units = CURRENCIES[curr]!
-            let parts = word.replacingOccurrences(of: ",", with: "").split(separator: ".")
-            let a = parts.indices.contains(0) ? Int(parts[0]) ?? 0 : 0
-            let b = parts.indices.contains(1) ? Int(parts[1]) ?? 0 : 0
-            pairs = [(a, units.0), (b, units.1)].filter { _ in true }
-            if pairs.count > 1 {
-                if pairs[1].0 == 0 { pairs = Array(pairs.prefix(1)) }
-                else if pairs[0].0 == 0 { pairs = Array(pairs.suffix(1)) }
-            }
-            for (i, (num, unit)) in pairs.enumerated() {
-                if i > 0 { appendLookup("and", s: nil) }
-                extend_num(String(num), first: i == 0)
-                if abs(num) != 1 && unit != "pence" {
-                    if let s = stem_s(unit + "s", tag: nil, stress: nil, ctx: nil).0 { result.append((s, 4)) }
-                } else {
-                    appendLookup(unit, s: nil)
-                }
-            }
+    if isPlainDigits(word), let sf = suffix, sf.count > 0, Lexicon.ordinals.contains(Int(sf.unicodeScalars.first!.value)) {
+      if let n = Int(word) {
+        extend_num(num2Words.convert(Decimal(n), to: .ordinal), escape: true)
+      }
+    } else if result.isEmpty, word.count == 4, !Lexicon.currencies.contains(where: { currency == $0.key }), isPlainDigits(word) {
+      if let n = Int(word) {
+        extend_num(num2Words.convert(Decimal(n), to: .year), escape: true)
+      }
+    } else if !is_head && !word.contains(".") {
+      let num = word.replacingOccurrences(of: ",", with: "")
+      if num.first == "0" || num.count > 3 {
+        for n in num { extend_num(String(n), first: false) }
+      } else if num.count == 3 && !num.hasSuffix("00") {
+        extend_num(String(num.first!))
+        if num[num.index(num.startIndex, offsetBy: 1)] == "0" {
+          result.append(lookup("O", tag: nil, stress: -2, ctx: nil) as! (String, Int))
+          extend_num(String(num.last!), first: false)
         } else {
-            if isPlainDigits(word) {
-                if let n = Int(word) { word = num2words(n, to: "cardinal") }
-            } else if !word.contains(".") {
-                let num = word.replacingOccurrences(of: ",", with: "")
-                if let n = Int(num) { word = num2words(n, to: (suffix != nil && ORDINALS.contains(suffix!) ? "ordinal" : "cardinal")) }
-            } else {
-                let num = word.replacingOccurrences(of: ",", with: "")
-                if num.first == "." {
-                    let tail = num.dropFirst().compactMap { Int(String($0)) }.map { num2words($0, to: nil) }.joined(separator: " ")
-                    word = "point " + tail
-                } else {
-                    if let d = Double(num) { word = num2words(d) }
-                }
-            }
-            extend_num(word, escape: true)
+          extend_num(String(num.suffix(2)), first: false)
         }
-        if result.isEmpty { return (nil, nil) }
-        var text = result.map { $0.0 }.joined(separator: " ")
-        let rating = result.map { $0.1 }.min() ?? 4
-        if let s = suffix, s == "s" || s == "'s" { text = pluralizeS(text) ?? text }
-        else if let s = suffix, s == "ed" || s == "'d" { text = pastEd(text) ?? text }
-        else if suffix == "ing" { text = progIng(text) ?? text }
-        return (text, rating)
+      } else {
+        extend_num(num)
+      }
+    } else if word.filter({ $0 == "." }).count > 1 || !is_head {
+      var first = true
+      for num in word.replacingOccurrences(of: ",", with: "").split(separator: ".").map(String.init) {
+        if num.isEmpty {}
+        else if num.first == "0" || (num.count != 2 && num.dropFirst().contains(where: { $0 != "0" })) {
+          for n in num {
+            extend_num(String(n), first: false)
+          }
+        } else {
+          extend_num(num, first: first)
+        }
+        first = false
+      }
+    } else if let curr = currency, let units = Lexicon.currencies[curr], isCurrency(word) {
+          var pairs: [(Int, String)] = []
+          let parts = word.replacingOccurrences(of: ",", with: "").split(separator: ".")
+          let a = parts.indices.contains(0) ? Int(parts[0]) ?? 0 : 0
+          let b = parts.indices.contains(1) ? Int(parts[1]) ?? 0 : 0
+          pairs = [(a, units.0), (b, units.1)].filter { _ in true }
+          if pairs.count > 1 {
+              if pairs[1].0 == 0 { pairs = Array(pairs.prefix(1)) }
+              else if pairs[0].0 == 0 { pairs = Array(pairs.suffix(1)) }
+          }
+      
+          for (i, (num, unit)) in pairs.enumerated() {
+              if i > 0 { appendLookup("and", s: nil) }
+              extend_num(String(num), first: i == 0)
+              if abs(num) != 1 && unit != "pence" {
+                  if let s = stem_s(unit + "s", tag: nil, stress: nil, ctx: nil).0 { result.append((s, 4)) }
+              } else {
+                  appendLookup(unit, s: nil)
+              }
+          }
+      } else {
+        if isPlainDigits(word) {
+          if let n = Int(word) { word = num2Words.convert(Decimal(n), to: .decimal) }
+        } else if !word.contains(".") {
+            let num = word.replacingOccurrences(of: ",", with: "")
+          if let n = Int(num) {
+            word = num2Words.convert(Decimal(n),
+                                     to: (suffix != nil && Lexicon.ordinals.contains(Int(suffix!.unicodeScalars.first!.value))) ? .ordinal : .decimal)
+          }
+        } else {
+            let num = word.replacingOccurrences(of: ",", with: "")
+            if num.first == "." {
+                let tail = num.dropFirst().compactMap { Int(String($0)) }.map { num2Words.convert(Decimal($0)) }.joined(separator: " ")
+                word = "point " + tail
+            } else {
+              if let d = Double(num) { word = num2Words.convert(Decimal(d)) }
+            }
+        }
+        
+        extend_num(word, escape: true)
     }
-    */
+  
+    if result.isEmpty { return (nil, nil) }
+    
+    var text = result.map { $0.0 }.joined(separator: " ")
+    let rating = result.map { $0.1 }.min() ?? 4
+    
+    if let s = suffix, s == "s" || s == "'s" {
+      text = pluralizeS(text) ?? text
+    } else if let s = suffix, s == "ed" || s == "'d" {
+      text = pastEd(text) ?? text
+    } else if suffix == "ing" {
+      text = progIng(text) ?? text
+    }
+    
+    return (text, rating)
+  }
 }
