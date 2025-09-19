@@ -29,7 +29,6 @@ final public class EnglishG2P {
       "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
   ]
  
-  static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
 
   // Stress markers
   static let STRESSES = "ˌˈ"
@@ -79,48 +78,55 @@ final public class EnglishG2P {
     let futureTo = (token.text == "to" || token.text == "To") || (token.text == "TO" && (token.tag == .particle || token.tag == .preposition))
     return TokenContext(futureVowel: vowel, futureTo: futureTo)
   }
-  /*
-    public static func resolveTokens(_ tokens: inout [MToken]) {
-        let text = tokens.dropLast().map { $0.text + $0.whitespace }.joined() + (tokens.last?.text ?? "")
-        let prespace = text.contains(" ") || text.contains("/") || Set(text.compactMap { c -> Int? in
-            if SUBTOKEN_JUNKS.contains(c) { return nil }
-            if String(c).range(of: "[A-Za-z]", options: .regularExpression) != nil { return 0 }
-            if String(c).range(of: "[0-9]", options: .regularExpression) != nil { return 1 }
-            return 2
-        }).count > 1
-        for i in 0..<tokens.count {
-            if tokens[i].phonemes == nil {
-                if i == tokens.count - 1, let last = tokens[i].text.last, NON_QUOTE_PUNCTS.contains(last) {
-                    tokens[i].phonemes = tokens[i].text
-                    tokens[i].`_`.rating = 3
-                } else if tokens[i].text.allSatisfy({ SUBTOKEN_JUNKS.contains($0) }) {
-                    tokens[i].phonemes = ""
-                    tokens[i].`_`.rating = 3
-                }
-            } else if i > 0 {
-                tokens[i].`_`.prespace = prespace
-            }
+  
+  private func resolveTokens(_ tokens: inout [MToken]) {
+    let text = tokens.dropLast().map { $0.text + $0.whitespace }.joined() + (tokens.last?.text ?? "")
+    let prespace = text.contains(" ") || text.contains("/") || Set(text.compactMap { c -> Int? in
+      if EnglishG2P.subTokenJunks.contains(c) { return nil }
+      
+      // Do something different for checking isAlpha instead of a-z
+      if String(c).range(of: "[A-Za-z]", options: .regularExpression) != nil { return 0 }
+      if String(c).range(of: "[0-9]", options: .regularExpression) != nil { return 1 }
+      return 2
+    }).count > 1
+    
+    /*
+    for i in 0..<tokens.count {
+      if tokens[i].phonemes == nil {
+        if i == tokens.count - 1, let last = tokens[i].text.last, NON_QUOTE_PUNCTS.contains(last) {
+          tokens[i].phonemes = tokens[i].text
+          tokens[i].`_`.rating = 3
+        } else if tokens[i].text.allSatisfy({ EnglishG2P.subTokenJunks.contains($0) }) {
+          tokens[i].phonemes = ""
+          tokens[i].`_`.rating = 3
         }
-        if prespace { return }
-        var indices: [(Bool, Int, Int)] = []
-        for (i, tk) in tokens.enumerated() {
-            if let ps = tk.phonemes, !ps.isEmpty { indices.append((ps.contains(PRIMARY_STRESS), stressWeight(ps), i)) }
-        }
-        if indices.count == 2, tokens[indices[0].2].text.count == 1 {
-            let i = indices[1].2
-            tokens[i].phonemes = applyStress(tokens[i].phonemes, stress: -0.5)
-            return
-        } else if indices.count < 2 || indices.map({ $0.0 ? 1 : 0 }).reduce(0, +) <= (indices.count + 1) / 2 {
-            return
-        }
-        indices.sort { ($0.0 ? 1 : 0, $0.1) < ($1.0 ? 1 : 0, $1.1) }
-        let cut = indices.prefix(indices.count / 2)
-        for x in cut {
-            let i = x.2
-            tokens[i].phonemes = applyStress(tokens[i].phonemes, stress: -0.5)
-        }
+      } else if i > 0 {
+          tokens[i].`_`.prespace = prespace
+      }
+    }
+    
+    guard !prespace else { return }
+    
+    var indices: [(Bool, Int, Int)] = []
+    for (i, tk) in tokens.enumerated() {
+        if let ps = tk.phonemes, !ps.isEmpty { indices.append((ps.contains(PRIMARY_STRESS), stressWeight(ps), i)) }
+    }
+    if indices.count == 2, tokens[indices[0].2].text.count == 1 {
+        let i = indices[1].2
+        tokens[i].phonemes = applyStress(tokens[i].phonemes, stress: -0.5)
+        return
+    } else if indices.count < 2 || indices.map({ $0.0 ? 1 : 0 }).reduce(0, +) <= (indices.count + 1) / 2 {
+        return
+    }
+    indices.sort { ($0.0 ? 1 : 0, $0.1) < ($1.0 ? 1 : 0, $1.1) }
+    let cut = indices.prefix(indices.count / 2)
+
+    for x in cut {
+      let i = x.2
+      tokens[i].phonemes = applyStress(tokens[i].phonemes, stress: -0.5)
     }
     */
+  }
     
   // Text pre-processing tuple for easing the tokenization
   typealias PreprocessTuple = (text: String, tokens: [String], features: [PreprocessFeature])
@@ -434,7 +440,7 @@ final public class EnglishG2P {
             left += 1
           } else {
             right -= 1
-            var last = arr[right]
+            let last = arr[right]
             if last.phonemes == nil {
               if last.text.allSatisfy({ EnglishG2P.subTokenJunks.contains($0) }) {
                 last.phonemes = ""
@@ -451,7 +457,7 @@ final public class EnglishG2P {
         
         if shouldFallback {
           let token = mergeTokens(arr, unk: self.unk)
-          var first = arr[0]
+          let first = arr[0]
           let out = fallback(token)
           first.phonemes = out.0
           first.`_`.rating = out.1
@@ -463,12 +469,12 @@ final public class EnglishG2P {
             }
           }
         } else {
-          // G2P.resolveTokens(&arr)
+          resolveTokens(&arr)
         }
       }
     }
     
-    var finalTokens: [MToken] = words.map { item in
+    let finalTokens: [MToken] = words.map { item in
       if let arr = item as? [MToken] { return mergeTokens(arr, unk: self.unk) }
       return item as! MToken
     }

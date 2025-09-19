@@ -10,7 +10,9 @@ extension NLTag {
 final class Lexicon {
   static let usVocab: Set<Character> = Set("AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʤʧˈˌθᵊᵻʔ")
   static let gbVocab: Set<Character> = Set("AIQWYabdfhijklmnpstuvwzðŋɑɒɔəɛɜɡɪɹʃʊʌʒʤʧˈˌːθᵊ")
-  static let ordinals: [Int] = [39, 45] + Array(65...90) + Array(97...122)
+  static let lexiconOrdinals: [Int] = [39, 45] + Array(65...90) + Array(97...122)
+  static let ordinals: Set<String> = Set(["st", "nd", "rd", "th"])
+
   static let addSymbols: [String: String] = [".": "dot", "/": "slash"]
   static let primaryStress: Character = "ˈ"
   static let secondaryStress: Character = "ˌ"
@@ -82,7 +84,7 @@ final class Lexicon {
     } else if isNumber(word: word, is_head: token.`_`.is_head) {
       let num = getNumber(word, currency: token.`_`.currency, is_head: token.`_`.is_head, num_flags: token.`_`.num_flags)
       return (applyStress(num.0, stress: token.`_`.stress), num.1)
-    } else if !word.unicodeScalars.allSatisfy({ Lexicon.ordinals.contains(Int($0.value)) }) {
+    } else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
       return (nil, nil)
     }
     
@@ -322,7 +324,7 @@ final class Lexicon {
     
     if !word.allSatisfy({ ch in
       if let v = ch.unicodeScalars.first?.value {
-        return Lexicon.ordinals.contains(Int(v))
+        return Lexicon.lexiconOrdinals.contains(Int(v))
       }
       return false
     }) {
@@ -436,10 +438,8 @@ final class Lexicon {
   }
   
   private func isNumber(word: String, is_head: Bool) -> Bool {
-    if word.allSatisfy({ !$0.isNumber }) { return false }
-    
-    let ordinalSuffixes = ["st", "nd", "rd", "th"]
-    let suffixes: [String] = ["ing", "'d", "ed", "'s"] + ordinalSuffixes + ["s"]
+    if word.allSatisfy({ !$0.isNumber }) { return false }    
+    let suffixes: [String] = ["ing", "'d", "ed", "'s"] + Lexicon.ordinals + ["s"]
     var core = word
     for s in suffixes {
       if core.hasSuffix(s) {
@@ -505,7 +505,7 @@ final class Lexicon {
       word.removeFirst()
     }
     
-    if isPlainDigits(word), let sf = suffix, sf.count > 0, Lexicon.ordinals.contains(Int(sf.unicodeScalars.first!.value)) {
+    if isPlainDigits(word), let sf = suffix, Lexicon.ordinals.contains(sf) {
       if let n = Int(word) {
         extend_num(num2Words.convert(Decimal(n), to: .ordinal), escape: true)
       }
@@ -568,7 +568,7 @@ final class Lexicon {
             let num = word.replacingOccurrences(of: ",", with: "")
           if let n = Int(num) {
             word = num2Words.convert(Decimal(n),
-                                     to: (suffix != nil && Lexicon.ordinals.contains(Int(suffix!.unicodeScalars.first!.value))) ? .ordinal : .decimal)
+                                     to: (suffix != nil && Lexicon.ordinals.contains(suffix!)) ? .ordinal : .decimal)
           }
         } else {
             let num = word.replacingOccurrences(of: ",", with: "")
