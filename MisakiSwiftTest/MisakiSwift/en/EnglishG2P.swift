@@ -9,6 +9,33 @@ final public class EnglishG2P {
   private let fallback: EnglishFallbackNetwork
   private let unk: String
   
+  static let punctuationTags: Set<String> = Set([".", ",", "[", "]", "{", "}", "(", ")", "``", "\"\"", "''", ":", "$", "#", "…", "..."])
+  static let punctuactions: Set<Character> = Set(";:,.!?—…\"\"\"")
+  static let nonQuotePunctuations: Set<Character> = Set(punctuactions.filter { !"\"\"\"".contains($0) })
+  static let vowels: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
+  static let consonants: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
+  static let subTokenJunks: Set<Character> = Set("',-._''/")
+
+  // Splits words into subtokens such as acronym boundaries, signs, commas, decimals, multiple quotes, camelCase boundaries and so forth.
+  static let SUBTOKENIZE_REGEX_PATTERN = #"^[''']+|\p{Lu}(?=\p{Lu}\p{Ll})|(?:^-)?(?:\d?[,.]?\d)+|[-_]+|[''']{2,}|\p{L}*?(?:[''']\p{L})*?\p{Ll}(?=\p{Lu})|\p{L}+(?:[''']\p{L})*|[^-_\p{L}'''\d]|[''']+$"#
+  
+  static var subtokenizeRegex = try! NSRegularExpression(pattern: EnglishG2P.SUBTOKENIZE_REGEX_PATTERN, options: [])
+    
+  // spaCy-style punctuation tags
+  // https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+  static let PUNCT_TAG_PHONEMES: [String: String] = [
+      "``": String(UnicodeScalar(8220)!),     // Left double quotation mark
+      "\"\"": String(UnicodeScalar(8221)!),   // Right double quotation mark
+      "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
+  ]
+ 
+  static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
+
+  // Stress markers
+  static let STRESSES = "ˌˈ"
+
+  // Character sets for tokenization
+  
   struct PreprocessFeature {
     enum Value {
       case int(Int)
@@ -28,21 +55,31 @@ final public class EnglishG2P {
     self.unk = unk
   }
 
-    /*
-
-    public static func tokenContext(_ ctx: TokenContext, ps: String?, token: MToken) -> TokenContext {
-        var vowel = ctx.future_vowel
-        if let ps = ps {
-            for c in ps {
-                if NON_QUOTE_PUNCTS.contains(c) { vowel = nil; break }
-                if VOWELS.contains(c) { vowel = true; break }
-                if CONSONANTS.contains(c) { vowel = false; break }
-            }
+  private func tokenContext(_ ctx: TokenContext, ps: String?, token: MToken) -> TokenContext {
+    var vowel = ctx.futureVowel
+    
+    if let ps = ps {
+      for c in ps {
+        if EnglishG2P.nonQuotePunctuations.contains(c) {
+          vowel = nil
+          break
         }
-        let future_to = (token.text == "to" || token.text == "To") || (token.text == "TO" && (token.tag == "TO" || token.tag == "IN"))
-        return TokenContext(future_vowel: vowel, future_to: future_to)
+        
+        if EnglishG2P.vowels.contains(c) {
+          vowel = true
+          break
+        }
+        
+        if EnglishG2P.consonants.contains(c) {
+          vowel = false
+          break
+        }
+      }
     }
-
+    let futureTo = (token.text == "to" || token.text == "To") || (token.text == "TO" && (token.tag == .particle || token.tag == .preposition))
+    return TokenContext(futureVowel: vowel, futureTo: futureTo)
+  }
+  /*
     public static func resolveTokens(_ tokens: inout [MToken]) {
         let text = tokens.dropLast().map { $0.text + $0.whitespace }.joined() + (tokens.last?.text ?? "")
         let prespace = text.contains(" ") || text.contains("/") || Set(text.compactMap { c -> Int? in
@@ -261,36 +298,6 @@ final public class EnglishG2P {
     return result
   }
   
-  // Splits words into subtokens such as acronym boundaries, signs, commas, decimals, multiple quotes, camelCase boundaries and so forth.
-  static let SUBTOKENIZE_REGEX_PATTERN = #"^[''']+|\p{Lu}(?=\p{Lu}\p{Ll})|(?:^-)?(?:\d?[,.]?\d)+|[-_]+|[''']{2,}|\p{L}*?(?:[''']\p{L})*?\p{Ll}(?=\p{Lu})|\p{L}+(?:[''']\p{L})*|[^-_\p{L}'''\d]|[''']+$"#
-  
-  static var subtokenizeRegex = try! NSRegularExpression(pattern: EnglishG2P.SUBTOKENIZE_REGEX_PATTERN, options: [])
-    
-  // Character sets for tokenization
-  static let SUBTOKEN_JUNKS: Set<Character> = Set("',-._''/")
-  static let PUNCTS: Set<Character> = Set(";:,.!?—…\"\"\"")
-  static let NON_QUOTE_PUNCTS: Set<Character> = Set(PUNCTS.filter { !"\"\"\"".contains($0) })
-
-  // spaCy-style punctuation tags
-  // https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
-  static let PUNCT_TAGS: Set<String> = Set([".", ",", "[", "]", "{", "}", "(", ")", "``", "\"\"", "''", ":", "$", "#", "…", "..."])
-  static let PUNCT_TAG_PHONEMES: [String: String] = [
-      "``": String(UnicodeScalar(8220)!),     // Left double quotation mark
-      "\"\"": String(UnicodeScalar(8221)!),   // Right double quotation mark
-      "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
-  ]
-
-  // Phonetic character sets
-  static let CONSONANTS: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
-  // private let EXTENDER: Character = "ː"
-
- 
-  static let ORDINALS: Set<String> = Set(["st", "nd", "rd", "th"])
-
-  // Stress markers
-  static let STRESSES = "ˌˈ"
-  static let VOWELS: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
-  
   func subtokenize(word: String) -> [String] {
     let nsString = word as NSString
     let range = NSRange(location: 0, length: nsString.length)
@@ -334,8 +341,8 @@ final public class EnglishG2P {
         } else if token.tag == .dash || (token.tag == .punctuation && token.text == "–") {
           token.phonemes = "—"
           token.`_`.rating = 3
-        } else if let _ = token.tag, EnglishG2P.PUNCT_TAGS.contains(token.text) {
-          token.phonemes = EnglishG2P.PUNCT_TAG_PHONEMES[token.text] ?? String(token.text.filter { EnglishG2P.PUNCTS.contains($0) })
+        } else if let _ = token.tag, EnglishG2P.punctuationTags.contains(token.text) {
+          token.phonemes = EnglishG2P.PUNCT_TAG_PHONEMES[token.text] ?? String(token.text.filter { EnglishG2P.punctuactions.contains($0) })
           if let phonemes = token.phonemes, phonemes.isEmpty { token.phonemes = nil }
           token.`_`.rating = token.phonemes != nil ? 4 : 0
         } else if currency != nil {
@@ -386,92 +393,94 @@ final public class EnglishG2P {
     tokens = foldLeft(tokens)
     
     print(tokens.forEach { $0.debugPrint() })
-    var words = retokenize(tokens)
+    let words = retokenize(tokens)
     
     var ctx = TokenContext()
     for i in stride(from: words.count - 1, through: 0, by: -1) {
-      if var w = words[i] as? MToken {
+      if let w = words[i] as? MToken {
         if w.phonemes == nil {
           let out = lexicon.transcribe(w, ctx: ctx)
           w.phonemes = out.0
           w.`_`.rating = out.1
         }
-      }
-        /*        if w.phonemes == nil, let fb = fallback {
-                  let out = fb.call(w)
-                   w.phonemes = out.0
-                  w.`_`.rating = out.1
-                }
-              ctx = G2P.tokenContext(ctx, ps: w.phonemes, token: w)
-                words[i] = w
-            } else if var arr = words[i] as? [MToken] {
-                var left = 0
-                var right = arr.count
-                var shouldFallback = false
-                while left < right {
-                    let hasFixed = arr[left..<right].contains { $0.`_`.alias != nil || $0.phonemes != nil }
-                    let tk: MToken? = hasFixed ? nil : mergeTokens(Array(arr[left..<right]), unk: self.unk)
-                    let res: (String?, Int?) = (tk == nil) ? (nil, nil) : lexicon.transcribe(tk!, ctx: ctx)
-                    if let ps = res.0 {
-                        arr[left].phonemes = ps
-                        arr[left].`_`.rating = res.1
-                        if left + 1 < right {
-                            for j in (left + 1)..<right {
-                                arr[j].phonemes = ""
-                                arr[j].`_`.rating = res.1
-                            }
-                        }
-                        ctx = G2P.tokenContext(ctx, ps: ps, token: tk!)
-                        right = left
-                        left = 0
-                    } else if left + 1 < right {
-                        left += 1
-                    } else {
-                        right -= 1
-                        var last = arr[right]
-                        if last.phonemes == nil {
-                            if last.text.allSatisfy({ SUBTOKEN_JUNKS.contains($0) }) {
-                                last.phonemes = ""
-                                last.`_`.rating = 3
-                            } else if fallback != nil {
-                                shouldFallback = true
-                                break
-                            }
-                        }
-                        left = 0
-                        arr[right] = last
-                    }
-                }
-                if shouldFallback {
-                    let tk = mergeTokens(arr, unk: self.unk)
-                    var first = arr[0]
-                    let out = fallback!.call(tk)
-                    first.phonemes = out.0
-                    first.`_`.rating = out.1
-                    arr[0] = first
-                    if arr.count > 1 {
-                        for j in 1..<arr.count { arr[j].phonemes = ""; arr[j].`_`.rating = out.1 }
-                    }
-                } else {
-                    G2P.resolveTokens(&arr)
-                }
-                words[i] = arr
-            }*/
+        
+        if w.phonemes == nil {
+          let out = fallback(w)
+          w.phonemes = out.0
+          w.`_`.rating = out.1
         }
-        /*var finalTokens: [MToken] = words.map { item in
-            if let arr = item as? [MToken] { return mergeTokens(arr, unk: self.unk) }
-            return item as! MToken
-        }
-        if version != "2.0" {
-            for i in 0..<finalTokens.count {
-                if var ps = finalTokens[i].phonemes, !ps.isEmpty {
-                    ps = ps.replacingOccurrences(of: "ɾ", with: "T").replacingOccurrences(of: "ʔ", with: "t")
-                    finalTokens[i].phonemes = ps
-                }
+        
+        ctx = tokenContext(ctx, ps: w.phonemes, token: w)
+      } else if var arr = words[i] as? [MToken] {
+        var left = 0
+        var right = arr.count
+        var shouldFallback = false
+        while left < right {
+          let hasFixed = arr[left..<right].contains { $0.`_`.alias != nil || $0.phonemes != nil }
+          let token: MToken? = hasFixed ? nil : mergeTokens(Array(arr[left..<right]), unk: self.unk)
+          let res: (String?, Int?) = (token == nil) ? (nil, nil) : lexicon.transcribe(token!, ctx: ctx)
+          
+          if let phonemes = res.0 {
+            arr[left].phonemes = phonemes
+            arr[left].`_`.rating = res.1
+            for j in (left + 1)..<right {
+              arr[j].phonemes = nil
+              arr[j].`_`.rating = res.1
             }
+            ctx = tokenContext(ctx, ps: phonemes, token: token!)
+            right = left
+            left = 0
+          } else if left + 1 < right {
+            left += 1
+          } else {
+            right -= 1
+            var last = arr[right]
+            if last.phonemes == nil {
+              if last.text.allSatisfy({ EnglishG2P.subTokenJunks.contains($0) }) {
+                last.phonemes = ""
+                last.`_`.rating = 3
+              } else {
+                shouldFallback = true
+                break
+              }
+            }
+            left = 0
+            arr[right] = last
+          }
         }
-        let result = finalTokens.map { ( $0.phonemes ?? self.unk ) + $0.whitespace }.joined()
-        return (result, finalTokens) */
-    return ("", [])
+        
+        if shouldFallback {
+          let token = mergeTokens(arr, unk: self.unk)
+          var first = arr[0]
+          let out = fallback(token)
+          first.phonemes = out.0
+          first.`_`.rating = out.1
+          arr[0] = first
+          if arr.count > 1 {
+            for j in 1..<arr.count {
+              arr[j].phonemes = nil;
+              arr[j].`_`.rating = out.1
+            }
+          }
+        } else {
+          // G2P.resolveTokens(&arr)
+        }
+      }
+    }
+    
+    var finalTokens: [MToken] = words.map { item in
+      if let arr = item as? [MToken] { return mergeTokens(arr, unk: self.unk) }
+      return item as! MToken
+    }
+        
+    for i in 0..<finalTokens.count {
+      if var ps = finalTokens[i].phonemes, !ps.isEmpty {
+        ps = ps.replacingOccurrences(of: "ɾ", with: "T").replacingOccurrences(of: "ʔ", with: "t")
+        finalTokens[i].phonemes = ps
+      }
+    }
+
+    let result = finalTokens.map { ( $0.phonemes ?? self.unk ) + $0.whitespace }.joined()
+    return (result, finalTokens)
   }
 }
