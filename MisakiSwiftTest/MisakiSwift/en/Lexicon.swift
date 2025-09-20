@@ -68,44 +68,8 @@ final class Lexicon {
     return e.merging(d) { (_, original) in original }
   }
   
-  func transcribe(_ token: MToken, ctx: TokenContext) -> (String?, Int?) {
-    var word = token.text
-    if let alias = token.`_`.alias { word = alias }
-    word = word.replacingOccurrences(of: String(UnicodeScalar(8216)!), with: "'")
-               .replacingOccurrences(of: String(UnicodeScalar(8217)!), with: "'")
-    word = word.precomposedStringWithCompatibilityMapping
-    
-    word = String(word.map { unicodeNumericIfNeeded($0) } )
-    
-    let stress: Double? = (word == word.lowercased() ? nil : (word == word.uppercased() ? capStresses.1 : capStresses.0))
-    let res = getWord(word, tag: token.tag, stress: stress, ctx: ctx)
-    if let phoneme = res.phoneme {
-      return (applyStress(appendCurrency(phoneme, currency: token.`_`.currency), stress: token.`_`.stress), res.rating)
-    } else if isNumber(word: word, is_head: token.`_`.is_head) {
-      let num = getNumber(word, currency: token.`_`.currency, is_head: token.`_`.is_head, num_flags: token.`_`.num_flags)
-      return (applyStress(num.0, stress: token.`_`.stress), num.1)
-    } else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
-      return (nil, nil)
-    }
-    
-    return (nil, nil)
-  }
-  
-  /// Converts Unicode digits to ASCII digits if needed
-  private func unicodeNumericIfNeeded(_ c: Character) -> Character {
-    guard c.isNumber else { return c }
-    
-    if let numericValue = c.wholeNumberValue {
-      if numericValue >= 0 && numericValue <= 9 {
-        return Character("\(numericValue)")
-      }
-    }
-    
-    return c
-  }
-  
   /// Applies stress modifications to phonetic strings
-  private func applyStress(_ phoneticString: String?, stress: Double?) -> String? {
+  static func applyStress(_ phoneticString: String?, stress: Double?) -> String? {
     func restress(_ ps: String) -> String {
       let characters = Array(ps)
       var indexedChars: [(Double, Character)] = characters.enumerated().map { (Double($0), $1) }
@@ -162,6 +126,42 @@ final class Lexicon {
     return phoneticString
   }
   
+  func transcribe(_ token: MToken, ctx: TokenContext) -> (String?, Int?) {
+    var word = token.text
+    if let alias = token.`_`.alias { word = alias }
+    word = word.replacingOccurrences(of: String(UnicodeScalar(8216)!), with: "'")
+               .replacingOccurrences(of: String(UnicodeScalar(8217)!), with: "'")
+    word = word.precomposedStringWithCompatibilityMapping
+    
+    word = String(word.map { unicodeNumericIfNeeded($0) } )
+    
+    let stress: Double? = (word == word.lowercased() ? nil : (word == word.uppercased() ? capStresses.1 : capStresses.0))
+    let res = getWord(word, tag: token.tag, stress: stress, ctx: ctx)
+    if let phoneme = res.phoneme {
+      return (Lexicon.applyStress(appendCurrency(phoneme, currency: token.`_`.currency), stress: token.`_`.stress), res.rating)
+    } else if isNumber(word: word, is_head: token.`_`.is_head) {
+      let num = getNumber(word, currency: token.`_`.currency, is_head: token.`_`.is_head, num_flags: token.`_`.num_flags)
+      return (Lexicon.applyStress(num.0, stress: token.`_`.stress), num.1)
+    } else if !word.unicodeScalars.allSatisfy({ Lexicon.lexiconOrdinals.contains(Int($0.value)) }) {
+      return (nil, nil)
+    }
+    
+    return (nil, nil)
+  }
+  
+  /// Converts Unicode digits to ASCII digits if needed
+  private func unicodeNumericIfNeeded(_ c: Character) -> Character {
+    guard c.isNumber else { return c }
+    
+    if let numericValue = c.wholeNumberValue {
+      if numericValue >= 0 && numericValue <= 9 {
+        return Character("\(numericValue)")
+      }
+    }
+    
+    return c
+  }
+    
   private func getWord(_ word: String, tag: NLTag?, stress: Double?, ctx: TokenContext) -> (phoneme: String?, rating: Int?) {
     let sc = getSpecialCase(word, tag: tag, stress: stress, ctx: ctx)
     if sc.phoneme != nil { return sc }
@@ -283,7 +283,7 @@ final class Lexicon {
       if nn.phoneme != nil { return nn }
     }
     
-    let applied = applyStress(phoneticString as? String, stress: stress)
+    let applied = Lexicon.applyStress(phoneticString as? String, stress: stress)
     return (applied, rating)
   }
   
@@ -309,7 +309,7 @@ final class Lexicon {
     
     if pieces.contains(where: { $0 == nil }) { return (nil, nil) }
     
-    let joined = applyStress(pieces.compactMap{ $0 }.joined(separator: ""), stress: 0)
+    let joined = Lexicon.applyStress(pieces.compactMap{ $0 }.joined(separator: ""), stress: 0)
     if let joined {
       let parts = joined.split(separator: Lexicon.secondaryStress)
       let ps = parts.joined(separator: String(Lexicon.primaryStress))

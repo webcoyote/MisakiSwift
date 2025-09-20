@@ -15,26 +15,19 @@ final public class EnglishG2P {
   static let vowels: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
   static let consonants: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
   static let subTokenJunks: Set<Character> = Set("',-._''/")
-
+  static let stresses = "ˌˈ"
+  static let primaryStress = stresses[stresses.index(stresses.startIndex, offsetBy: 1)]
+  static let secondaryStress = stresses[stresses.index(stresses.startIndex, offsetBy: 0)]
   // Splits words into subtokens such as acronym boundaries, signs, commas, decimals, multiple quotes, camelCase boundaries and so forth.
-  static let SUBTOKENIZE_REGEX_PATTERN = #"^[''']+|\p{Lu}(?=\p{Lu}\p{Ll})|(?:^-)?(?:\d?[,.]?\d)+|[-_]+|[''']{2,}|\p{L}*?(?:[''']\p{L})*?\p{Ll}(?=\p{Lu})|\p{L}+(?:[''']\p{L})*|[^-_\p{L}'''\d]|[''']+$"#
-  
-  static var subtokenizeRegex = try! NSRegularExpression(pattern: EnglishG2P.SUBTOKENIZE_REGEX_PATTERN, options: [])
-    
-  // spaCy-style punctuation tags
-  // https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
-  static let PUNCT_TAG_PHONEMES: [String: String] = [
+  static let subtokenizeRegexPattern = #"^[''']+|\p{Lu}(?=\p{Lu}\p{Ll})|(?:^-)?(?:\d?[,.]?\d)+|[-_]+|[''']{2,}|\p{L}*?(?:[''']\p{L})*?\p{Ll}(?=\p{Lu})|\p{L}+(?:[''']\p{L})*|[^-_\p{L}'''\d]|[''']+$"#
+  static let subtokenizeRegex = try! NSRegularExpression(pattern: EnglishG2P.subtokenizeRegexPattern, options: [])
+  // spaCy-style punctuation tags https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+  static let punctuationTagPhonemes: [String: String] = [
       "``": String(UnicodeScalar(8220)!),     // Left double quotation mark
       "\"\"": String(UnicodeScalar(8221)!),   // Right double quotation mark
       "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
   ]
- 
 
-  // Stress markers
-  static let STRESSES = "ˌˈ"
-
-  // Character sets for tokenization
-  
   struct PreprocessFeature {
     enum Value {
       case int(Int)
@@ -79,25 +72,31 @@ final public class EnglishG2P {
     return TokenContext(futureVowel: vowel, futureTo: futureTo)
   }
   
+  func stressWeight(_ phonemes: String?) -> Int {
+    let dipthongs = Set("AIOQWYʤʧ")
+    guard let phonemes else { return 0 }
+    return phonemes.reduce(0) { sum, character in
+      sum + (dipthongs.contains(character) ? 2 : 1)
+    }
+  }
+  
   private func resolveTokens(_ tokens: inout [MToken]) {
     let text = tokens.dropLast().map { $0.text + $0.whitespace }.joined() + (tokens.last?.text ?? "")
     let prespace = text.contains(" ") || text.contains("/") || Set(text.compactMap { c -> Int? in
       if EnglishG2P.subTokenJunks.contains(c) { return nil }
       
-      // Do something different for checking isAlpha instead of a-z
-      if String(c).range(of: "[A-Za-z]", options: .regularExpression) != nil { return 0 }
-      if String(c).range(of: "[0-9]", options: .regularExpression) != nil { return 1 }
+      if c.isLetter { return 0 }
+      if c.isNumber { return 1 }
       return 2
     }).count > 1
-    
-    /*
+        
     for i in 0..<tokens.count {
       if tokens[i].phonemes == nil {
-        if i == tokens.count - 1, let last = tokens[i].text.last, NON_QUOTE_PUNCTS.contains(last) {
+        if i == tokens.count - 1, let last = tokens[i].text.last, EnglishG2P.nonQuotePunctuations.contains(last) {
           tokens[i].phonemes = tokens[i].text
           tokens[i].`_`.rating = 3
         } else if tokens[i].text.allSatisfy({ EnglishG2P.subTokenJunks.contains($0) }) {
-          tokens[i].phonemes = ""
+          tokens[i].phonemes = nil
           tokens[i].`_`.rating = 3
         }
       } else if i > 0 {
@@ -109,11 +108,11 @@ final public class EnglishG2P {
     
     var indices: [(Bool, Int, Int)] = []
     for (i, tk) in tokens.enumerated() {
-        if let ps = tk.phonemes, !ps.isEmpty { indices.append((ps.contains(PRIMARY_STRESS), stressWeight(ps), i)) }
+      if let ps = tk.phonemes, !ps.isEmpty { indices.append((ps.contains(Lexicon.primaryStress), stressWeight(ps), i)) }
     }
     if indices.count == 2, tokens[indices[0].2].text.count == 1 {
         let i = indices[1].2
-        tokens[i].phonemes = applyStress(tokens[i].phonemes, stress: -0.5)
+      tokens[i].phonemes = Lexicon.applyStress(tokens[i].phonemes, stress: -0.5)
         return
     } else if indices.count < 2 || indices.map({ $0.0 ? 1 : 0 }).reduce(0, +) <= (indices.count + 1) / 2 {
         return
@@ -123,9 +122,8 @@ final public class EnglishG2P {
 
     for x in cut {
       let i = x.2
-      tokens[i].phonemes = applyStress(tokens[i].phonemes, stress: -0.5)
+      tokens[i].phonemes = Lexicon.applyStress(tokens[i].phonemes, stress: -0.5)
     }
-    */
   }
     
   // Text pre-processing tuple for easing the tokenization
@@ -348,7 +346,7 @@ final public class EnglishG2P {
           token.phonemes = "—"
           token.`_`.rating = 3
         } else if let _ = token.tag, EnglishG2P.punctuationTags.contains(token.text) {
-          token.phonemes = EnglishG2P.PUNCT_TAG_PHONEMES[token.text] ?? String(token.text.filter { EnglishG2P.punctuactions.contains($0) })
+          token.phonemes = EnglishG2P.punctuationTagPhonemes[token.text] ?? String(token.text.filter { EnglishG2P.punctuactions.contains($0) })
           if let phonemes = token.phonemes, phonemes.isEmpty { token.phonemes = nil }
           token.`_`.rating = token.phonemes != nil ? 4 : 0
         } else if currency != nil {
