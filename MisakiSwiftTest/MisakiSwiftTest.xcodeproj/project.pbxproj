@@ -18,6 +18,8 @@
 		5236AA822E76A4DE00131097 /* EnglishNum2Word.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */; };
 		524BB4892E48B09E00132B5F /* gb_gold.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4852E48B07300132B5F /* gb_gold.json */; };
 		524BB48A2E48B0A100132B5F /* gb_silver.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4862E48B07300132B5F /* gb_silver.json */; };
+		5265936B2E7E801200B5684A /* us_gold.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4872E48B07300132B5F /* us_gold.json */; };
+		5265936C2E7E801900B5684A /* us_silver.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4882E48B07300132B5F /* us_silver.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -277,6 +279,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				524BB4892E48B09E00132B5F /* gb_gold.json in Resources */,
+				5265936C2E7E801900B5684A /* us_silver.json in Resources */,
+				5265936B2E7E801200B5684A /* us_gold.json in Resources */,
 				524BB48A2E48B0A100132B5F /* gb_silver.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

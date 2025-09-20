@@ -332,6 +332,7 @@ final public class EnglishG2P {
       } else {
         tokens = [token]
       }
+      tokens.last?.whitespace = token.whitespace
           
       for j in 0..<tokens.count {
         let token = tokens[j]
@@ -396,7 +397,6 @@ final public class EnglishG2P {
     var tokens = tokenize(preprocessedText: pre)
     tokens = foldLeft(tokens)
     
-    print(tokens.forEach { $0.debugPrint() })
     let words = retokenize(tokens)
     
     var ctx = TokenContext()
