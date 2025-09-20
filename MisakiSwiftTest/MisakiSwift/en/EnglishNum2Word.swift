@@ -43,7 +43,13 @@ struct EnglishNum2Word {
     let highWords = ["m", "b", "tr", "quadr", "quint", "sext", "sept", "oct", "non", "dec"]
     for (index, word) in highWords.enumerated() {
       let power = 6 + (index * 3)
-      cards[Int(pow(10.0, Double(power)))] = word + "illion"
+      let val = pow(10.0, Double(power))
+      if val <= Double(Int.max) {
+        let intVal: Int = Int(val)
+        cards[intVal] = word + "illion"
+      } else {
+        // Currently really, really large numbers are not handled
+      }      
     }
     self.cards = cards
   }
