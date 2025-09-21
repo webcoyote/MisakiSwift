@@ -20,6 +20,15 @@
 		524BB48A2E48B0A100132B5F /* gb_silver.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4862E48B07300132B5F /* gb_silver.json */; };
 		5265936B2E7E801200B5684A /* us_gold.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4872E48B07300132B5F /* us_gold.json */; };
 		5265936C2E7E801900B5684A /* us_silver.json in Resources */ = {isa = PBXBuildFile; fileRef = 524BB4882E48B07300132B5F /* us_silver.json */; };
+		5265940E2E8033FF00B5684A /* BARTEncoderLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5265940A2E8033FF00B5684A /* BARTEncoderLayer.swift */; };
+		5265940F2E8033FF00B5684A /* BARTModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5265940B2E8033FF00B5684A /* BARTModel.swift */; };
+		526594102E8033FF00B5684A /* FeedForward.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5265940C2E8033FF00B5684A /* FeedForward.swift */; };
+		526594112E8033FF00B5684A /* BARTDecoderLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526594092E8033FF00B5684A /* BARTDecoderLayer.swift */; };
+		526594122E8033FF00B5684A /* BARTConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526594082E8033FF00B5684A /* BARTConfig.swift */; };
+		526594132E8033FF00B5684A /* MultiHeadAttention.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5265940D2E8033FF00B5684A /* MultiHeadAttention.swift */; };
+		526594162E80343B00B5684A /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 526594152E80343B00B5684A /* MLX */; };
+		526594182E80343B00B5684A /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 526594172E80343B00B5684A /* MLXNN */; };
+		5265941A2E80343B00B5684A /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = 526594192E80343B00B5684A /* MLXRandom */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +65,12 @@
 		524BB4862E48B07300132B5F /* gb_silver.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = gb_silver.json; sourceTree = "<group>"; };
 		524BB4872E48B07300132B5F /* us_gold.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = us_gold.json; sourceTree = "<group>"; };
 		524BB4882E48B07300132B5F /* us_silver.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = us_silver.json; sourceTree = "<group>"; };
+		526594082E8033FF00B5684A /* BARTConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BARTConfig.swift; sourceTree = "<group>"; };
+		526594092E8033FF00B5684A /* BARTDecoderLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BARTDecoderLayer.swift; sourceTree = "<group>"; };
+		5265940A2E8033FF00B5684A /* BARTEncoderLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BARTEncoderLayer.swift; sourceTree = "<group>"; };
+		5265940B2E8033FF00B5684A /* BARTModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BARTModel.swift; sourceTree = "<group>"; };
+		5265940C2E8033FF00B5684A /* FeedForward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedForward.swift; sourceTree = "<group>"; };
+		5265940D2E8033FF00B5684A /* MultiHeadAttention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiHeadAttention.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -81,6 +96,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				526594182E80343B00B5684A /* MLXNN in Frameworks */,
+				5265941A2E80343B00B5684A /* MLXRandom in Frameworks */,
+				526594162E80343B00B5684A /* MLX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -134,9 +152,9 @@
 		524BB4802E489FE700132B5F /* en */ = {
 			isa = PBXGroup;
 			children = (
+				526594072E8033EF00B5684A /* FallbackNetwork */,
 				5236AA7F2E74B3C800131097 /* PennTagUtil.swift */,
 				524BB4832E48AEE100132B5F /* DataResourcesUtil.swift */,
-				522648C92E6C2193008519BC /* EnglishFallbackNetwork.swift */,
 				524BB47F2E489FE000132B5F /* EnglishG2P.swift */,
 				5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */,
 				524BB4822E48AE2500132B5F /* Lexicon.swift */,
@@ -156,6 +174,20 @@
 				524BB4882E48B07300132B5F /* us_silver.json */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		526594072E8033EF00B5684A /* FallbackNetwork */ = {
+			isa = PBXGroup;
+			children = (
+				526594082E8033FF00B5684A /* BARTConfig.swift */,
+				526594092E8033FF00B5684A /* BARTDecoderLayer.swift */,
+				5265940A2E8033FF00B5684A /* BARTEncoderLayer.swift */,
+				5265940B2E8033FF00B5684A /* BARTModel.swift */,
+				5265940C2E8033FF00B5684A /* FeedForward.swift */,
+				5265940D2E8033FF00B5684A /* MultiHeadAttention.swift */,
+				522648C92E6C2193008519BC /* EnglishFallbackNetwork.swift */,
+			);
+			path = FallbackNetwork;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -178,6 +210,9 @@
 			);
 			name = MisakiSwiftTest;
 			packageProductDependencies = (
+				526594152E80343B00B5684A /* MLX */,
+				526594172E80343B00B5684A /* MLXNN */,
+				526594192E80343B00B5684A /* MLXRandom */,
 			);
 			productName = MisakiSwiftTest;
 			productReference = 524BB4542E489FB200132B5F /* MisakiSwiftTest.app */;
@@ -261,6 +296,9 @@
 			);
 			mainGroup = 524BB44B2E489FB200132B5F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				526594142E80343B00B5684A /* XCRemoteSwiftPackageReference "mlx-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 524BB4552E489FB200132B5F /* Products */;
 			projectDirPath = "";
@@ -307,6 +345,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				522648CA2E6C2416008519BC /* EnglishG2P.swift in Sources */,
+				5265940E2E8033FF00B5684A /* BARTEncoderLayer.swift in Sources */,
+				5265940F2E8033FF00B5684A /* BARTModel.swift in Sources */,
+				526594102E8033FF00B5684A /* FeedForward.swift in Sources */,
+				526594112E8033FF00B5684A /* BARTDecoderLayer.swift in Sources */,
+				526594122E8033FF00B5684A /* BARTConfig.swift in Sources */,
+				526594132E8033FF00B5684A /* MultiHeadAttention.swift in Sources */,
 				522648CB2E6C241C008519BC /* MToken.swift in Sources */,
 				522648CC2E6C2421008519BC /* Lexicon.swift in Sources */,
 				522648CE2E6C242B008519BC /* EnglishFallbackNetwork.swift in Sources */,
@@ -637,6 +681,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		526594142E80343B00B5684A /* XCRemoteSwiftPackageReference "mlx-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.25.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		526594152E80343B00B5684A /* MLX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 526594142E80343B00B5684A /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLX;
+		};
+		526594172E80343B00B5684A /* MLXNN */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 526594142E80343B00B5684A /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXNN;
+		};
+		526594192E80343B00B5684A /* MLXRandom */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 526594142E80343B00B5684A /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXRandom;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 524BB44C2E489FB200132B5F /* Project object */;
 }
