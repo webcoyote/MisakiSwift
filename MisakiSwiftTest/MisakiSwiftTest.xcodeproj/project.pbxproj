@@ -26,6 +26,8 @@
 		5265941A2E80343B00B5684A /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = 526594192E80343B00B5684A /* MLXRandom */; };
 		5265941C2E80387200B5684A /* gb_bart_config.json in Resources */ = {isa = PBXBuildFile; fileRef = 5265941B2E80387200B5684A /* gb_bart_config.json */; };
 		5265941E2E80388700B5684A /* us_bart_config.json in Resources */ = {isa = PBXBuildFile; fileRef = 5265941D2E80388700B5684A /* us_bart_config.json */; };
+		526594202E803E2B00B5684A /* gb_bart.safetensors in Resources */ = {isa = PBXBuildFile; fileRef = 5265941F2E803E2B00B5684A /* gb_bart.safetensors */; };
+		526594222E803E3700B5684A /* us_bart.safetensors in Resources */ = {isa = PBXBuildFile; fileRef = 526594212E803E3700B5684A /* us_bart.safetensors */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +67,8 @@
 		526594082E8033FF00B5684A /* BARTConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BARTConfig.swift; sourceTree = "<group>"; };
 		5265941B2E80387200B5684A /* gb_bart_config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = gb_bart_config.json; sourceTree = "<group>"; };
 		5265941D2E80388700B5684A /* us_bart_config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = us_bart_config.json; sourceTree = "<group>"; };
+		5265941F2E803E2B00B5684A /* gb_bart.safetensors */ = {isa = PBXFileReference; lastKnownFileType = file; path = gb_bart.safetensors; sourceTree = "<group>"; };
+		526594212E803E3700B5684A /* us_bart.safetensors */ = {isa = PBXFileReference; lastKnownFileType = file; path = us_bart.safetensors; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -167,7 +171,9 @@
 				524BB4872E48B07300132B5F /* us_gold.json */,
 				524BB4882E48B07300132B5F /* us_silver.json */,
 				5265941B2E80387200B5684A /* gb_bart_config.json */,
+				5265941F2E803E2B00B5684A /* gb_bart.safetensors */,
 				5265941D2E80388700B5684A /* us_bart_config.json */,
+				526594212E803E3700B5684A /* us_bart.safetensors */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -311,7 +317,9 @@
 				524BB4892E48B09E00132B5F /* gb_gold.json in Resources */,
 				5265936C2E7E801900B5684A /* us_silver.json in Resources */,
 				5265936B2E7E801200B5684A /* us_gold.json in Resources */,
+				526594202E803E2B00B5684A /* gb_bart.safetensors in Resources */,
 				524BB48A2E48B0A100132B5F /* gb_silver.json in Resources */,
+				526594222E803E3700B5684A /* us_bart.safetensors in Resources */,
 				5265941C2E80387200B5684A /* gb_bart_config.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
