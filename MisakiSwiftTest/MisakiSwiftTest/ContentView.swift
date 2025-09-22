@@ -13,6 +13,11 @@ struct ContentView: View {
             Spacer()
             Button {
                 print("Pressed")
+              let fallback = EnglishFallbackNetwork(british: false)
+              let str = "Misaki"
+              let range: Range<String.Index> = Range(uncheckedBounds: (lower: str.startIndex, upper: str.endIndex))
+              let output = fallback(MToken(text: str, tokenRange: range, whitespace: " "))
+              print(output)
             } label: {
                 Text("Press me")
                     .foregroundStyle(.white)

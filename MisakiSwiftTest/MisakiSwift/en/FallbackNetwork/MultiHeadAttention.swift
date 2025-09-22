@@ -2,7 +2,7 @@ import Foundation
 import MLX
 import MLXNN
 
-nonisolated class MultiHeadAttention: Module {
+nonisolated final class MultiHeadAttention: Module {
     let numHeads: Int
     let dModel: Int
     let headDim: Int
@@ -28,18 +28,18 @@ nonisolated class MultiHeadAttention: Module {
     func callAsFunction(_ query: MLXArray, key: MLXArray? = nil, value: MLXArray? = nil, mask: MLXArray? = nil) -> MLXArray {
       let key = key ?? query
       let value = value ?? query
-      
+            
       let batchSize = query.shape[0]
       let seqLen = query.shape[1]
         
       // Project and reshape
-      let q = qProj(query).reshaped([batchSize, seqLen, numHeads, headDim]).transposed(1, 2)
-      let k = kProj(key).reshaped([batchSize, -1, numHeads, headDim]).transposed(1, 2)
-      let v = vProj(value).reshaped([batchSize, -1, numHeads, headDim]).transposed(1, 2)
+      let q = qProj(query).reshaped([batchSize, seqLen, numHeads, headDim]).transposed(0, 2, 1, 3)
+      let k = kProj(key).reshaped([batchSize, -1, numHeads, headDim]).transposed(0, 2, 1, 3)
+      let v = vProj(value).reshaped([batchSize, -1, numHeads, headDim]).transposed(0, 2, 1, 3)
         
       // Scaled dot-product attention
       let scale = Float(1.0 / sqrt(Double(headDim)))
-      var scores = matmul(q, k.transposed(2, 3)) * scale
+      var scores = matmul(q, k.transposed(0, 1, 3, 2)) * scale
         
       if let mask {
           scores = scores + mask
@@ -49,7 +49,7 @@ nonisolated class MultiHeadAttention: Module {
       let attnOutput = matmul(attnWeights, v)
       
       // Reshape and project
-      let output = attnOutput.transposed(1, 2).reshaped([batchSize, seqLen, dModel])
+      let output = attnOutput.transposed(0, 2, 1, 3).reshaped([batchSize, seqLen, dModel])
       return outProj(output)
     }
 }

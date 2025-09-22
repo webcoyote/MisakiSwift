@@ -2,7 +2,7 @@ import Foundation
 import MLX
 import MLXNN
 
-nonisolated class BARTDecoderLayer: Module {
+nonisolated final class BARTDecoderLayer: Module {
   let selfAttn: MultiHeadAttention
   let selfAttnNorm: LayerNorm
   let crossAttn: MultiHeadAttention

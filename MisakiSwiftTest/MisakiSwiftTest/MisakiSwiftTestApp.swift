@@ -14,10 +14,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     -> Bool
   {
     print("App starting")
-    let g2p = EnglishG2P(british: false)
-    let (phonemes, tokens)  = g2p.phonemize(text: "[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models.")
+    // let g2p = EnglishG2P(british: false)
+    // let (phonemes, tokens)  = g2p.phonemize(text: "[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models.")
     // let _  = g2p.phonemize(text: "I found it from site google.com and it was good.")
-    print(phonemes)
+    // print(phonemes)
+        
     return true
   }
 }

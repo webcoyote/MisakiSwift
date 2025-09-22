@@ -2,7 +2,7 @@ import Foundation
 import MLX
 import MLXNN
 
-nonisolated class FeedForward: Module {
+nonisolated final class FeedForward: Module {
     let linear1: Linear
     let linear2: Linear
     

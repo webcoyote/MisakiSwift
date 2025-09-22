@@ -2,7 +2,7 @@ import Foundation
 import MLX
 import MLXNN
 
-nonisolated class BARTEncoderLayer: Module {
+nonisolated final class BARTEncoderLayer: Module {
     let selfAttn: MultiHeadAttention
     let selfAttnNorm: LayerNorm
     let ffn: FeedForward

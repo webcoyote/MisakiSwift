@@ -1,24 +1,23 @@
 import NaturalLanguage
 
 /// Maps Apple's NLTag (lexicalClass) to a Penn Treebank POS tag string.
-/// `token` is optional but lets us apply helpful heuristics.
+/// `token` is optional but might enable some heuristics.
 func pennTag(for nlTag: NLTag, token: String? = nil) -> String {
     let t = token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let lower = t.lowercased()
 
-    // --- Quick punctuation / symbols pass (PTB uses dedicated tags for many)
     if nlTag == .punctuation || nlTag == .sentenceTerminator || nlTag == .otherPunctuation {
         switch t {
         case ",": return ","
         case ".", "!", "?": return "."
         case ":", ";": return ":"
-        case "``", "“", "„", "\"": return "``"      // opening quote best-effort
-        case "''", "”": return "''"                 // closing quote best-effort
-        case "(", "[" , "{": return "("             // PTB paren tag
+        case "``", "“", "„", "\"": return "``"
+        case "''", "”": return "''"
+        case "(", "[" , "{": return "("
         case ")", "]" , "}": return ")"
         case "$": return "$"
         case "#": return "#"
-        case "-", "–", "—": return ":"              // PTB typically groups dashes w/ ":" class
+        case "-", "–", "—": return ":"
         default: break
         }
     }
@@ -66,7 +65,7 @@ func pennTag(for nlTag: NLTag, token: String? = nil) -> String {
         if auxDo.contains(lower) { return ["does"].contains(lower) ? "VBZ" : (lower == "did" ? "VBD" : "VB") }
         if auxHave.contains(lower) { return ["has"].contains(lower) ? "VBZ" : (lower == "had" ? "VBD" : "VB") }
         if lower.hasSuffix("ing") { return "VBG" }
-        if lower.hasSuffix("ed")  { return "VBD" }     // could be VBN; needs context
+        if lower.hasSuffix("ed")  { return "VBD" }
         if lower.hasSuffix("en")  { return "VBN" }
         if lower.hasSuffix("s")   { return "VBZ" }
         return "VB"
@@ -94,16 +93,16 @@ func pennTag(for nlTag: NLTag, token: String? = nil) -> String {
 
     case .determiner:
         if whDeterminers.contains(lower) { return "WDT" }
-        if lower == "that" { return "DT" }  // many cases; best-effort
+        if lower == "that" { return "DT" }
         return "DT"
 
     case .preposition:
-        if lower == "to" { return "TO" }   // infinitival marker
+        if lower == "to" { return "TO" }
         return "IN"
 
     case .conjunction:
-        if subordinatingConjunctions.contains(lower) { return "IN" } // SBAR starters → IN in PTB
-        return "CC"  // coordinating conj (and/or/but/nor/yet/so)
+        if subordinatingConjunctions.contains(lower) { return "IN" }
+        return "CC"
 
     case .number:
         return "CD"
@@ -125,7 +124,7 @@ func pennTag(for nlTag: NLTag, token: String? = nil) -> String {
         return "."
 
     case .whitespace, .paragraphBreak, .wordJoiner:
-        return "XX"   // not a PTB tag; explicit "unknown/non-token" marker
+        return "XX"
 
     // Name types (when using NLTagScheme.nameType)
     case .personalName, .organizationName, .placeName:
