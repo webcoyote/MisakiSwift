@@ -10,6 +10,7 @@ class EnglishFallbackNetwork {
   init(british: Bool) {
     configuration = EnglishFallbackNetwork.loadConfig(british: british)!
     modelWeights = EnglishFallbackNetwork.loadWeights(british: british)!
+    
     self.british = british
   }
   
