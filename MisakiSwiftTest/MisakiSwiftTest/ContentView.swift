@@ -14,7 +14,7 @@ struct ContentView: View {
             Button {
                 print("Pressed")
               let fallback = EnglishFallbackNetwork(british: false)
-              let str = "Misaki"
+              let str = "Kokoro"
               let range: Range<String.Index> = Range(uncheckedBounds: (lower: str.startIndex, upper: str.endIndex))
               let output = fallback(MToken(text: str, tokenRange: range, whitespace: " "))
               print(output)

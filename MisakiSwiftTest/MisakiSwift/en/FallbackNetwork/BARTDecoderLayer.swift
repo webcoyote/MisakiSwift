@@ -41,11 +41,11 @@ nonisolated final class BARTDecoderLayer: Module {
       // Self-attention with residual
       let attnOutput = selfAttn(x, mask: selfMask)
       var output = selfAttnNorm(x + attnOutput)
-      
+            
       // Cross-attention with residual
       let crossOutput = crossAttn(output, key: encoderOutput, value: encoderOutput, mask: crossMask)
       output = crossAttnNorm(output + crossOutput)
-      
+                  
       // Feed-forward with residual
       let ffnOutput = ffn(output)
       output = ffnNorm(output + ffnOutput)

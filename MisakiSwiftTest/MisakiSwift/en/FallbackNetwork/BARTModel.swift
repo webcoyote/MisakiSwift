@@ -92,20 +92,21 @@ nonisolated final class BARTModel: Module {
     crossMask: MLXArray? = nil) -> MLXArray
   {
     let seqLen = inputIds.shape[1]
-    let positions = MLXArray(0..<seqLen).reshaped([1, seqLen])
+    let positions = MLXArray(0..<seqLen).reshaped([1, seqLen]) + 2
     
     // Embeddings
     var hidden = sharedEmbedding(inputIds)
+    let embedPositions = decoderPositionalEmbedding(positions)
     
-    hidden = hidden + decoderPositionalEmbedding(positions)
+    hidden = hidden + embedPositions
+    hidden = decoderNorm(hidden)
     
     // Decoder layers
     for layer in decoderLayers {
       hidden = layer(hidden, encoderOutput: encoderOutput, selfMask: selfMask, crossMask: crossMask)
     }
     
-    hidden = decoderNorm(hidden)
-    return lmHead(hidden)
+    return lmHead(hidden) + logitBias
   }
     
   func generate(inputIds: MLXArray, maxLength: Int = 50, temperature: Float = 1.0) -> MLXArray {
@@ -116,17 +117,21 @@ nonisolated final class BARTModel: Module {
     var decoderInput = MLXArray([config.bosTokenId]).reshaped([1, 1])
     var generatedTokens: [Int32] = []
         
-    for _ in 0..<maxLength {
+    for i in 0..<maxLength {
+      if i == maxLength - 1 {
+        generatedTokens.append(Int32(config.eosTokenId))
+        break
+      }
+      
       // Decode next token
-      let logits = decode(decoderInput, encoderOutput: encoderOutput)
+      var logits = decode(decoderInput, encoderOutput: encoderOutput)
       let nextTokenLogits = logits[0, logits.shape[1] - 1]
             
       // Apply temperature
       let scaledLogits = nextTokenLogits / temperature
-      let probs = softmax(scaledLogits)
       
-      // Sample next token
-      let nextToken = probs.argMax().item(Int32.self)
+      // Sample next token, take the max probability value
+      let nextToken = scaledLogits.argMax().item(Int32.self)
       
       // Stop if EOS token
       if nextToken == config.eosTokenId {
