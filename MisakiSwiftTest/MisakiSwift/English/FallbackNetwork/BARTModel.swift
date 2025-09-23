@@ -124,7 +124,7 @@ nonisolated final class BARTModel: Module {
       }
       
       // Decode next token
-      var logits = decode(decoderInput, encoderOutput: encoderOutput)
+      let logits = decode(decoderInput, encoderOutput: encoderOutput)
       let nextTokenLogits = logits[0, logits.shape[1] - 1]
             
       // Apply temperature

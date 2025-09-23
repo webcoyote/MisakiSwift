@@ -131,6 +131,42 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		522402482E82C0C2008AA839 /* Num2Word */ = {
+			isa = PBXGroup;
+			children = (
+				5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */,
+			);
+			path = Num2Word;
+			sourceTree = "<group>";
+		};
+		522402492E82C0D5008AA839 /* Lexicon */ = {
+			isa = PBXGroup;
+			children = (
+				524BB4832E48AEE100132B5F /* DataResourcesUtil.swift */,
+				524BB4822E48AE2500132B5F /* Lexicon.swift */,
+				5236AA7F2E74B3C800131097 /* PennTagUtil.swift */,
+			);
+			path = Lexicon;
+			sourceTree = "<group>";
+		};
+		5224024A2E82C0EE008AA839 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				522402462E8268C4008AA839 /* MLXArray+DebugPrint.swift */,
+				5236AA7A2E74A07C00131097 /* Range+Contains.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		5224024B2E82C107008AA839 /* DataStructures */ = {
+			isa = PBXGroup;
+			children = (
+				524BB4812E48A3E900132B5F /* MToken.swift */,
+				5236AA7C2E74A09300131097 /* TokenContext.swift */,
+			);
+			path = DataStructures;
+			sourceTree = "<group>";
+		};
 		524BB44B2E489FB200132B5F = {
 			isa = PBXGroup;
 			children = (
@@ -156,25 +192,22 @@
 		524BB47E2E489FD600132B5F /* MisakiSwift */ = {
 			isa = PBXGroup;
 			children = (
-				524BB4802E489FE700132B5F /* en */,
+				5224024A2E82C0EE008AA839 /* Extensions */,
+				524BB4802E489FE700132B5F /* English */,
 			);
 			path = MisakiSwift;
 			sourceTree = "<group>";
 		};
-		524BB4802E489FE700132B5F /* en */ = {
+		524BB4802E489FE700132B5F /* English */ = {
 			isa = PBXGroup;
 			children = (
+				5224024B2E82C107008AA839 /* DataStructures */,
+				522402492E82C0D5008AA839 /* Lexicon */,
+				522402482E82C0C2008AA839 /* Num2Word */,
 				526594072E8033EF00B5684A /* FallbackNetwork */,
-				5236AA7F2E74B3C800131097 /* PennTagUtil.swift */,
-				524BB4832E48AEE100132B5F /* DataResourcesUtil.swift */,
 				524BB47F2E489FE000132B5F /* EnglishG2P.swift */,
-				5236AA812E76A4DA00131097 /* EnglishNum2Word.swift */,
-				524BB4822E48AE2500132B5F /* Lexicon.swift */,
-				524BB4812E48A3E900132B5F /* MToken.swift */,
-				5236AA7A2E74A07C00131097 /* Range+Contains.swift */,
-				5236AA7C2E74A09300131097 /* TokenContext.swift */,
 			);
-			path = en;
+			path = English;
 			sourceTree = "<group>";
 		};
 		524BB4842E48B04A00132B5F /* Resources */ = {
@@ -195,7 +228,6 @@
 		526594072E8033EF00B5684A /* FallbackNetwork */ = {
 			isa = PBXGroup;
 			children = (
-				522402462E8268C4008AA839 /* MLXArray+DebugPrint.swift */,
 				52256E062E808C9400FC01FD /* BARTLayerNorm.swift */,
 				526594082E8033FF00B5684A /* BARTConfig.swift */,
 				52256E022E808A6B00FC01FD /* BARTDecoderLayer.swift */,
