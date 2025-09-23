@@ -84,6 +84,3 @@ The package includes pre-trained models and dictionaries:
 
 These resources are automatically bundled with the package and loaded at runtime.
 
-## License
-
-Apache 2.0.
