@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		522402472E8268C7008AA839 /* MLXArray+DebugPrint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522402462E8268C4008AA839 /* MLXArray+DebugPrint.swift */; };
 		52256DFD2E8088C600FC01FD /* MultiHeadAttention.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52256DFC2E8088C600FC01FD /* MultiHeadAttention.swift */; };
 		52256DFF2E8088CC00FC01FD /* FeedForward.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52256DFE2E8088CC00FC01FD /* FeedForward.swift */; };
 		52256E012E8089E900FC01FD /* BARTEncoderLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52256E002E8089E900FC01FD /* BARTEncoderLayer.swift */; };
@@ -54,6 +55,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		522402462E8268C4008AA839 /* MLXArray+DebugPrint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MLXArray+DebugPrint.swift"; sourceTree = "<group>"; };
 		52256DFC2E8088C600FC01FD /* MultiHeadAttention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiHeadAttention.swift; sourceTree = "<group>"; };
 		52256DFE2E8088CC00FC01FD /* FeedForward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedForward.swift; sourceTree = "<group>"; };
 		52256E002E8089E900FC01FD /* BARTEncoderLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BARTEncoderLayer.swift; sourceTree = "<group>"; };
@@ -193,6 +195,7 @@
 		526594072E8033EF00B5684A /* FallbackNetwork */ = {
 			isa = PBXGroup;
 			children = (
+				522402462E8268C4008AA839 /* MLXArray+DebugPrint.swift */,
 				52256E062E808C9400FC01FD /* BARTLayerNorm.swift */,
 				526594082E8033FF00B5684A /* BARTConfig.swift */,
 				52256E022E808A6B00FC01FD /* BARTDecoderLayer.swift */,
@@ -368,6 +371,7 @@
 				526594122E8033FF00B5684A /* BARTConfig.swift in Sources */,
 				522648CB2E6C241C008519BC /* MToken.swift in Sources */,
 				52256E012E8089E900FC01FD /* BARTEncoderLayer.swift in Sources */,
+				522402472E8268C7008AA839 /* MLXArray+DebugPrint.swift in Sources */,
 				52256E052E808ADD00FC01FD /* BARTModel.swift in Sources */,
 				522648CC2E6C2421008519BC /* Lexicon.swift in Sources */,
 				522648CE2E6C242B008519BC /* EnglishFallbackNetwork.swift in Sources */,

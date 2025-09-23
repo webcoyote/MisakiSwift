@@ -68,19 +68,21 @@ nonisolated final class BARTModel: Module {
     
   func encode(_ inputIds: MLXArray, mask: MLXArray? = nil) -> MLXArray {
     let seqLen = inputIds.shape[1]
-    let positions = MLXArray(0..<seqLen).reshaped([1, seqLen])
-    
+    let positions = MLXArray(0..<seqLen).reshaped([1, seqLen]) + 2
+        
     // Embeddings
     var hidden = sharedEmbedding(inputIds)
-    
-    hidden = hidden + encoderPositionalEmbedding(positions)
+    let embedPos = encoderPositionalEmbedding(positions)
+            
+    hidden = hidden + embedPos
+    hidden = encoderNorm(hidden)
     
     // Encoder layers
     for layer in encoderLayers {
       hidden = layer(hidden, mask: mask)
     }
     
-    return encoderNorm(hidden)
+    return hidden
   }
     
   func decode(
