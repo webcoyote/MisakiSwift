@@ -63,7 +63,7 @@ MisakiSwift consists of several key components:
 - **`Lexicon`**: Dictionary-based pronunciation lookup using gold and silver dictionaries
 - **`EnglishFallbackNetwork`**: Transformer-based model (ported to run on MLX) for phoneme prediction for out-of-vocabulary words
 
-### Key Differences from Python Misaki
+## Key Differences from Python Misaki
 
 1. **POS Tagging**: Uses Apple's `NaturalLanguage` framework instead of SpaCy for part-of-speech tagging
 2. **Neural Network**: The BART-based fallback network is ported to run on [MLX](https://github.com/ml-explore/mlx)
@@ -83,4 +83,3 @@ The package includes pre-trained models and dictionaries:
 - **Silver Dictionary**: Additional pronunciation mappings with slightly lower confidence
 
 These resources are automatically bundled with the package and loaded at runtime.
-

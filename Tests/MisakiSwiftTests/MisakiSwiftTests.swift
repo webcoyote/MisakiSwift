@@ -1,20 +1,27 @@
 import Testing
 @testable import MisakiSwift
 
-@Test func test_exampleString_British() async throws {
+let texts: [(originalText: String, britishPhonetization: String, americanPhoneitization: String)] = [
+  ("[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models.",
+   "misˈɑki ɪz ɐ ʤˈiːtəpˈiː ˈɛnʤɪn dɪzˈInd fɔː kˈOkəɹO mˈɒdᵊlz.",
+   "misˈɑki ɪz ɐ ʤˈitəpˈi ˈɛnʤən dəzˈInd fɔɹ kˈOkəɹO mˈɑdᵊlz."),
+  ("“To James Mortimer, M.R.C.S., from his friends of the C.C.H.,” was engraved upon it, with the date “1884.”",
+   "“tə ʤˈAmz mˈɔːtɪmə, ˌɛmˌɑːsˌiːˈɛs, fɹɒm hɪz fɹˈɛndz ɒv ðə sˌiːsˌiːˈAʧ,” wɒz ɪnɡɹˈAvd əpˈɒn ɪt, wɪð ðə dˈAt “ˌAtˈiːn ˈAti fˈɔː.”",
+   "“tə ʤˈAmz mˈɔɹTəməɹ, ˌɛmˌɑɹsˌiˈɛs, fɹʌm hɪz fɹˈɛndz ʌv ðə sˌisˌiˈAʧ,” wʌz ɪnɡɹˈAvd əpˈɑn ɪt, wɪð ðə dˈAt “ˌAtˈin ˈATi fˈɔɹ.”")
+]
+
+@Test func testStrings_BritishPhonetization() async throws {
   let englishG2P = EnglishG2P(british: true)
   
-  let text = "[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models."
-  let expectedOutput = "misˈɑki ɪz ɐ ʤˈiːtəpˈiː ˈɛnʤɪn dɪzˈInd fɔː kˈOkəɹO mˈɒdᵊlz."
-    
-  #expect(englishG2P.phonemize(text: text).0 == expectedOutput)
+  for pair in texts {
+    #expect(englishG2P.phonemize(text: pair.0).0 == pair.1)
+  }
 }
 
-@Test func test_exampleString_American() async throws {
+@Test func testStrings_AmericanPhonetization() async throws {
   let englishG2P = EnglishG2P(british: false)
-  
-  let text = "[Misaki](/misˈɑki/) is a G2P engine designed for [Kokoro](/kˈOkəɹO/) models."
-  let expectedOutput = "misˈɑki ɪz ɐ ʤˈitəpˈi ˈɛnʤən dəzˈInd fɔɹ kˈOkəɹO mˈɑdᵊlz."
-    
-  #expect(englishG2P.phonemize(text: text).0 == expectedOutput)
+
+  for pair in texts {
+    #expect(englishG2P.phonemize(text: pair.0).0 == pair.2)
+  }
 }

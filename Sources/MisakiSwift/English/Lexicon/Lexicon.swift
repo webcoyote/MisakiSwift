@@ -1,12 +1,6 @@
 import Foundation
 import NaturalLanguage
 
-extension NLTag {
-  var isProperNoun: Bool {
-    return self == .personalName || self == .organizationName || self == .placeName
-  }
-}
-
 final class Lexicon {
   static let usVocab: Set<Character> = Set("AIOWYbdfhijklmnpstuvwzæðŋɑɔəɛɜɡɪɹɾʃʊʌʒʤʧˈˌθᵊᵻʔ")
   static let gbVocab: Set<Character> = Set("AIQWYabdfhijklmnpstuvwzðŋɑɒɔəɛɜɡɪɹʃʊʌʒʤʧˈˌːθᵊ")
@@ -311,8 +305,7 @@ final class Lexicon {
     
     let joined = Lexicon.applyStress(pieces.compactMap{ $0 }.joined(separator: ""), stress: 0)
     if let joined {
-      let parts = joined.split(separator: Lexicon.secondaryStress)
-      let ps = parts.joined(separator: String(Lexicon.primaryStress))
+      let ps = joined.replacingLastOccurrence(of: Lexicon.secondaryStress, with: Lexicon.primaryStress)
       return (ps, 3)
     }
   

@@ -8,9 +8,17 @@ final public class EnglishG2P {
   private let lexicon: Lexicon
   private let fallback: EnglishFallbackNetwork
   private let unk: String
+    
+  static let punctuationTags: Set<NLTag> =  Set([.openQuote, .closeQuote, .openParenthesis, .closeParenthesis, .punctuation, .sentenceTerminator, .otherPunctuation])
+  static let punctuactions: Set<Character> = Set(";:,.!?—…\"“”")
   
-  static let punctuationTags: Set<String> = Set([".", ",", "[", "]", "{", "}", "(", ")", "``", "\"\"", "''", ":", "$", "#", "…", "..."])
-  static let punctuactions: Set<Character> = Set(";:,.!?—…\"\"\"")
+  // spaCy-style punctuation tags https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+  static let punctuationTagPhonemes: [String: String] = [
+      "``": String(UnicodeScalar(8220)!),     // Left double quotation mark
+      "\"\"": String(UnicodeScalar(8221)!),   // Right double quotation mark
+      "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
+  ]
+  
   static let nonQuotePunctuations: Set<Character> = Set(punctuactions.filter { !"\"\"\"".contains($0) })
   static let vowels: Set<Character> = Set("AIOQWYaiuæɑɒɔəɛɜɪʊʌᵻ")
   static let consonants: Set<Character> = Set("bdfhjklmnpstvwzðŋɡɹɾʃʒʤʧθ")
@@ -21,13 +29,7 @@ final public class EnglishG2P {
   // Splits words into subtokens such as acronym boundaries, signs, commas, decimals, multiple quotes, camelCase boundaries and so forth.
   static let subtokenizeRegexPattern = #"^[''']+|\p{Lu}(?=\p{Lu}\p{Ll})|(?:^-)?(?:\d?[,.]?\d)+|[-_]+|[''']{2,}|\p{L}*?(?:[''']\p{L})*?\p{Ll}(?=\p{Lu})|\p{L}+(?:[''']\p{L})*|[^-_\p{L}'''\d]|[''']+$"#
   static let subtokenizeRegex = try! NSRegularExpression(pattern: EnglishG2P.subtokenizeRegexPattern, options: [])
-  // spaCy-style punctuation tags https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
-  static let punctuationTagPhonemes: [String: String] = [
-      "``": String(UnicodeScalar(8220)!),     // Left double quotation mark
-      "\"\"": String(UnicodeScalar(8221)!),   // Right double quotation mark
-      "''": String(UnicodeScalar(8221)!)      // Right double quotation mark
-  ]
-
+  
   struct PreprocessFeature {
     enum Value {
       case int(Int)
@@ -108,7 +110,9 @@ final public class EnglishG2P {
     
     var indices: [(Bool, Int, Int)] = []
     for (i, tk) in tokens.enumerated() {
-      if let ps = tk.phonemes, !ps.isEmpty { indices.append((ps.contains(Lexicon.primaryStress), stressWeight(ps), i)) }
+      if let ps = tk.phonemes, !ps.isEmpty {
+        indices.append((ps.contains(Lexicon.primaryStress), stressWeight(ps), i))
+      }
     }
     if indices.count == 2, tokens[indices[0].2].text.count == 1 {
         let i = indices[1].2
@@ -235,10 +239,10 @@ final public class EnglishG2P {
     return mutableTokens
   }
   
-  func mergeTokens(_ tokens: [MToken], unk: String?) -> MToken {
+  func mergeTokens(_ tokens: [MToken], unk: String? = nil) -> MToken {
     let stressSet = Set(tokens.compactMap { $0._.stress })
     let currencySet = Set(tokens.compactMap { $0._.currency })
-    let ratings: [Int?] = tokens.map { $0._.rating }
+    let ratings: Set<Int?> = Set(tokens.map { $0._.rating })
         
     var phonemes: String? = nil
     if let unk {
@@ -277,12 +281,12 @@ final public class EnglishG2P {
       start_ts: tokens.first?.start_ts,
       end_ts: tokens.last?.end_ts,
       underscore: Underscore(
-        is_head: tokens.first!._.is_head,
+        is_head: tokens.first?._.is_head ?? false,
         alias: nil,
         stress: (stressSet.count == 1 ? stressSet.first : nil),
         currency: currencySet.max(),
         num_flags: String(flagChars.sorted()),
-        prespace: tokens.first!._.prespace,
+        prespace: tokens.first?._.prespace ?? false,
         rating: ratings.contains(where: { $0 == nil }) ? nil : ratings.compactMap { $0 }.min()
       )
     )
@@ -346,10 +350,13 @@ final public class EnglishG2P {
         } else if token.tag == .dash || (token.tag == .punctuation && token.text == "–") {
           token.phonemes = "—"
           token.`_`.rating = 3
-        } else if let _ = token.tag, EnglishG2P.punctuationTags.contains(token.text) {
-          token.phonemes = EnglishG2P.punctuationTagPhonemes[token.text] ?? String(token.text.filter { EnglishG2P.punctuactions.contains($0) })
-          if let phonemes = token.phonemes, phonemes.isEmpty { token.phonemes = nil }
-          token.`_`.rating = token.phonemes != nil ? 4 : 0
+        } else if let tag = token.tag, EnglishG2P.punctuationTags.contains(tag), !token.text.lowercased().unicodeScalars.allSatisfy({ (97...122).contains(Int($0.value)) }) {
+          if let val = EnglishG2P.punctuationTagPhonemes[token.text] {
+            token.phonemes = val
+          } else {
+            token.phonemes = token.text.filter { EnglishG2P.punctuactions.contains($0) }
+          }
+          token.`_`.rating = 4
         } else if currency != nil {
           if token.tag != .number {
             currency = nil
@@ -421,14 +428,14 @@ final public class EnglishG2P {
         var shouldFallback = false
         while left < right {
           let hasFixed = arr[left..<right].contains { $0.`_`.alias != nil || $0.phonemes != nil }
-          let token: MToken? = hasFixed ? nil : mergeTokens(Array(arr[left..<right]), unk: self.unk)
+          let token: MToken? = hasFixed ? nil : mergeTokens(Array(arr[left..<right]))
           let res: (String?, Int?) = (token == nil) ? (nil, nil) : lexicon.transcribe(token!, ctx: ctx)
           
           if let phonemes = res.0 {
             arr[left].phonemes = phonemes
             arr[left].`_`.rating = res.1
             for j in (left + 1)..<right {
-              arr[j].phonemes = nil
+              arr[j].phonemes = ""
               arr[j].`_`.rating = res.1
             }
             ctx = tokenContext(ctx, ps: phonemes, token: token!)
@@ -454,7 +461,7 @@ final public class EnglishG2P {
         }
         
         if shouldFallback {
-          let token = mergeTokens(arr, unk: self.unk)
+          let token = mergeTokens(arr)
           let first = arr[0]
           let out = fallback(token)
           first.phonemes = out.0
@@ -462,7 +469,7 @@ final public class EnglishG2P {
           arr[0] = first
           if arr.count > 1 {
             for j in 1..<arr.count {
-              arr[j].phonemes = nil;
+              arr[j].phonemes = ""
               arr[j].`_`.rating = out.1
             }
           }
