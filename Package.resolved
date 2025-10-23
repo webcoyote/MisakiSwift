@@ -1,5 +1,5 @@
 {
-  "originHash" : "4145fd1baf3a959dd8362381904658ea9c5cd65784b9835c8341b8a6a5ab567c",
+  "originHash" : "75a1a92e32260f1bfdfbadf020ac768b2116d8c41de0d7b4888d643124e673f8",
   "pins" : [
     {
       "identity" : "mlx-swift",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mlalma/MLXUtilsLibrary.git",
       "state" : {
-        "revision" : "3b6178a1c0b60c0b4f97941b9bc28bad3d952253",
-        "version" : "0.0.4"
+        "revision" : "59a57d6c92de25c5d73815ed371c332db6ca4c13",
+        "version" : "0.0.5"
       }
     },
     {
