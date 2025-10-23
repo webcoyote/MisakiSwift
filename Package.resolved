@@ -1,5 +1,5 @@
 {
-  "originHash" : "0f5869b7e9fc9134dfcf2b766ab5bb08b458e839f241e6772d46d8b145787f0c",
+  "originHash" : "4145fd1baf3a959dd8362381904658ea9c5cd65784b9835c8341b8a6a5ab567c",
   "pins" : [
     {
       "identity" : "mlx-swift",
@@ -11,12 +11,30 @@
       }
     },
     {
+      "identity" : "mlxutilslibrary",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mlalma/MLXUtilsLibrary.git",
+      "state" : {
+        "revision" : "3b6178a1c0b60c0b4f97941b9bc28bad3d952253",
+        "version" : "0.0.4"
+      }
+    },
+    {
       "identity" : "swift-numerics",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-numerics",
       "state" : {
         "revision" : "bbadd4b853a33fd78c4ae977d17bb2af15eb3f2a",
         "version" : "1.1.0"
+      }
+    },
+    {
+      "identity" : "zipfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
+      "state" : {
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
       }
     }
   ],

@@ -16,14 +16,16 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.25.6")
+    .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.25.6"),
+    .package(url: "https://github.com/mlalma/MLXUtilsLibrary.git", from: "0.0.4")
   ],
   targets: [
     .target(
       name: "MisakiSwift",
       dependencies: [
         .product(name: "MLX", package: "mlx-swift"),
-        .product(name: "MLXNN", package: "mlx-swift")
+        .product(name: "MLXNN", package: "mlx-swift"),
+        .product(name: "MLXUtilsLibrary", package: "MLXUtilsLibrary")
      ],
      resources: [
       .copy("../../Resources/")
