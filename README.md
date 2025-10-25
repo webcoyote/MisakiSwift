@@ -66,13 +66,14 @@ MisakiSwift consists of several key components:
 ## Key Differences from Python Misaki
 
 1. **POS Tagging**: Uses Apple's `NaturalLanguage` framework instead of SpaCy for part-of-speech tagging
-2. **Neural Network**: The BART-based fallback network is ported to run on [MLX](https://github.com/ml-explore/mlx)
+2. **Neural Network**: The BART-based fallback network is ported to run on [MLX](https://github.com/ml-explore/mlx-swift)
 3. **Resource Management**: All model weights and dictionaries are bundled as resources within the Swift package
 
 ## Dependencies
 
-- **[MLX](https://github.com/ml-explore/mlx)**: Machine learning framework for the neural network component
+- **[MLX](https://github.com/ml-explore/mlx-swift)**: Machine learning framework for the neural network component
 - **NaturalLanguage**: Apple's built-in framework for text processing and POS tagging
+- **MLXUtilsLibrary**: For `MToken`, used also in other parts of the ML stack
 
 ## Model Resources
 
