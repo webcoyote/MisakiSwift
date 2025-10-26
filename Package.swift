@@ -16,8 +16,8 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/webcoyote/mlx-swift", from: "0.25.6"),
-    .package(url: "https://github.com/mlalma/MLXUtilsLibrary.git", from: "0.0.5")
+    .package(url: "https://github.com/webcoyote/mlx-swift", from: "0.29.2"),
+    .package(url: "https://github.com/webcoyote/MLXUtilsLibrary.git", from: "0.0.5")
   ],
   targets: [
     .target(
