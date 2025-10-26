@@ -28,7 +28,7 @@ let package = Package(
         .product(name: "MLXUtilsLibrary", package: "MLXUtilsLibrary")
      ],
      resources: [
-      .copy("Resources/")
+      .process("Resources/", localization: .none)
      ]
     ),
     .testTarget(
